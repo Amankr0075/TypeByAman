@@ -770,32 +770,10 @@
     }
   }
 
-  // ─── Feedback (minimal, non-intrusive) ─────────────────────────────────────
-
-  let feedbackEl = null;
-  function showFeedback(msg, type = 'info') {
-    if (feedbackEl) feedbackEl.remove();
-    feedbackEl = document.createElement('div');
-    feedbackEl.textContent = msg;
-    feedbackEl.style.cssText = `
-      position: fixed; bottom: 16px; right: 16px; z-index: 2147483647;
-      padding: 10px 14px; border-radius: 8px;
-      font: 500 12px/1.4 Inter, -apple-system, sans-serif;
-      max-width: 300px; pointer-events: none;
-      background: ${type === 'warning' ? '#2a1a08' : type === 'error' ? '#2a0808' : '#0a1a2a'};
-      border: 1px solid ${type === 'warning' ? '#f7a44f44' : type === 'error' ? '#f75c5c44' : '#4f8ef744'};
-      color: ${type === 'warning' ? '#f7a44f' : type === 'error' ? '#f75c5c' : '#4f8ef7'};
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-      animation: tba-slide-up 0.2s ease;
-    `;
-    if (!document.querySelector('#tba-feedback-style')) {
-      const style = document.createElement('style');
-      style.id = 'tba-feedback-style';
-      style.textContent = '@keyframes tba-slide-up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }';
-      document.head.appendChild(style);
-    }
-    document.body.appendChild(feedbackEl);
-    setTimeout(() => { feedbackEl?.remove(); feedbackEl = null; }, 3500);
+  // ─── Feedback (Stealth Mode) ───────────────────────────────────────────────
+  // Completely silent — no on-screen popup or UI indicator is injected into the page.
+  function showFeedback(_msg, _type) {
+    // No-op: silent execution
   }
 
   // ─── Message Listener ───────────────────────────────────────────────────────
