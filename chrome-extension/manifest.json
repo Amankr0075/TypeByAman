@@ -5,13 +5,11 @@
   "description": "A premium local typing/replay utility. Type. Replay. Create. — by Aman Kumar",
   "author": "Aman Kumar",
   "homepage_url": "https://amankr0075.github.io/TypeByAman/",
-
   "icons": {
     "16": "assets/icon16.png",
     "48": "assets/icon48.png",
     "128": "assets/icon128.png"
   },
-
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "TypeByAman — Type. Replay. Create.",
@@ -21,36 +19,34 @@
       "128": "assets/icon128.png"
     }
   },
-
   "background": {
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-
   "options_ui": {
     "page": "options/options.html",
     "open_in_tab": true
   },
-
   "permissions": [
     "storage",
     "activeTab",
     "scripting",
     "tabs"
   ],
-
   "host_permissions": [
     "<all_urls>"
   ],
-
   "commands": {
     "start-typing": {
       "suggested_key": {
@@ -74,11 +70,14 @@
       "description": "Stop typing"
     }
   },
-
   "web_accessible_resources": [
     {
-      "resources": ["assets/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
