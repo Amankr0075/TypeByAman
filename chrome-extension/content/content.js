@@ -373,8 +373,11 @@
         }
       }
 
-      let lastTypoTime = Date.now();
-      let nextTypoInterval = 8000 + Math.random() * 4000; // ~10 seconds for first typo
+      let lastMajorTypoTime = Date.now();
+      let nextMajorTypoInterval = 45000 + Math.random() * 8000; // ~50 seconds for major mistake (20-25+ chars)
+
+      let lastMinorTypoTime = Date.now();
+      let nextMinorTypoInterval = 10000 + Math.random() * 4000; // ~12 seconds for minor key slip
 
       for (let i = 0; i < text.length; i++) {
         if (signal.aborted) break;
@@ -385,18 +388,62 @@
         const ch = text[i];
         typingState.charIndex = i;
 
-        // ── Human-like Typo Simulation (every ~10 seconds) ───────────────────
         const now = Date.now();
         const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
 
-        if (typingState.humanTypoMode && isEligibleForTypo && (now - lastTypoTime) >= nextTypoInterval) {
+        // ── 1. Major Human Mistake (Every ~50s: types 20-25+ chars wrong, erases, and retypes) ──
+        if (typingState.humanTypoMode && isEligibleForTypo && (now - lastMajorTypoTime) >= nextMajorTypoInterval) {
+          const wrongSnippet = getWrongChunk(); // 28–31 characters (guaranteed at least 20–25 chars)
+          lastMajorTypoTime = Date.now();
+          nextMajorTypoInterval = 48000 + Math.random() * 6000; // reschedule in ~50 seconds
+
+          // A. Type out the wrong 20-25+ character sequence like a human thinking ahead
+          for (let w = 0; w < wrongSnippet.length; w++) {
+            if (signal.aborted) break;
+            await waitIfPaused();
+            if (signal.aborted) break;
+            await typeCharacter(el, wrongSnippet[w], signal);
+            const wDelay = Math.max(20, typingState.delay + Math.floor(Math.random() * 25 - 10));
+            await sleep(wDelay, signal);
+          }
+
+          if (signal.aborted) break;
+
+          // B. Realization pause: 350ms - 550ms ("Wait, this is wrong, let me erase it")
+          const realizationMs = 350 + Math.floor(Math.random() * 200);
+          await sleep(realizationMs, signal);
+          if (signal.aborted) break;
+
+          // C. Rapid backspacing: erase each wrong character one by one like holding backspace
+          for (let d = 0; d < wrongSnippet.length; d++) {
+            if (signal.aborted) break;
+            await waitIfPaused();
+            if (signal.aborted) break;
+            await deleteCharacter(el, signal);
+            const backspaceSpeed = 35 + Math.floor(Math.random() * 30);
+            await sleep(backspaceSpeed, signal);
+          }
+
+          if (signal.aborted) break;
+
+          // D. Cognitive reset hesitation: 250ms - 400ms before re-typing correct code
+          const resetPause = 250 + Math.floor(Math.random() * 150);
+          await sleep(resetPause, signal);
+          if (signal.aborted) break;
+
+          // E. Cleanly type the intended character and continue!
+          await typeCharacter(el, ch, signal);
+          continue;
+        }
+
+        // ── 2. Minor Key Slip (Every ~12-15s: adjacent key typo & backspace) ──
+        if (typingState.humanTypoMode && isEligibleForTypo && (now - lastMinorTypoTime) >= nextMinorTypoInterval) {
           const typoMade = await performTypoAndCorrect(el, ch, signal);
           if (signal.aborted) break;
 
           if (typoMade) {
-            // Reset timer and schedule next typo for ~10 seconds later (9s - 12s)
-            lastTypoTime = Date.now();
-            nextTypoInterval = 9000 + Math.random() * 3000;
+            lastMinorTypoTime = Date.now();
+            nextMinorTypoInterval = 12000 + Math.random() * 4000;
 
             // In ~40% of cases, human typed 1 more character before realizing mistake
             let bonusChar = null;
@@ -408,7 +455,7 @@
               if (signal.aborted) break;
             }
 
-            // Realization pause: 200–350ms (human notices the error on screen)
+            // Realization pause: 200–350ms
             const noticePause = 200 + Math.floor(Math.random() * 150);
             await sleep(noticePause, signal);
             if (signal.aborted) break;
@@ -435,7 +482,6 @@
             await sleep(recoverDelay, signal);
             if (signal.aborted) break;
 
-            // Update progress normally
             if (i % 25 === 0 || i === text.length - 1) {
               chrome.runtime.sendMessage({
                 action: 'statusUpdate', status: 'typing',
@@ -639,7 +685,29 @@
     el.dispatchEvent(new KeyboardEvent('keyup', eventProps));
   }
 
-  // ─── Human-like Typo Simulation ─────────────────────────────────────────────
+  // ─── Human-like Typo & Mistake Simulation ─────────────────────────────────
+
+  // Realistic stream-of-thought wrong chunks (28–31 characters each)
+  const WRONG_CHUNK_SNIPPETS = [
+    "const tempResult = data.filter",
+    "function calculateTotalSum() {",
+    "retunr response.json(payload)",
+    "console.log('debugging value')",
+    "let items = list.map(item =>",
+    "if (userState === null || und",
+    "const formattedDate = new Date",
+    "return new Promise((resolve) ",
+    "document.querySelector('#target",
+    "async function fetchDataFromApi",
+    "const finalOutput = result.map",
+    "this.setState({ isLoading: tr",
+    "export default function App() ",
+    "import React, { useState, use",
+  ];
+
+  function getWrongChunk() {
+    return WRONG_CHUNK_SNIPPETS[Math.floor(Math.random() * WRONG_CHUNK_SNIPPETS.length)];
+  }
 
   // QWERTY adjacent-key map: for each key, list of keys that fingers commonly
   // mistype (immediate left, right, above, below on a standard keyboard layout)

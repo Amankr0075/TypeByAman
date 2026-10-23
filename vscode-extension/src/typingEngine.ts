@@ -10,26 +10,26 @@
 import * as vscode from 'vscode';
 
 export interface TypingEngineConfig {
-  text:          string;
-  editor:        vscode.TextEditor;
-  delay:         number;
-  lineBreakDelay:number;
-  startDelay:    number;
-  onProgress:    (charIndex: number, totalChars: number) => void;
-  onPause:       (charIndex: number, totalChars: number) => void;
-  onDone:        (totalChars: number) => void;
-  onError:       (err: Error, charIndex: number) => void;
-  onStop:        (charIndex: number) => void;
+  text: string;
+  editor: vscode.TextEditor;
+  delay: number;
+  lineBreakDelay: number;
+  startDelay: number;
+  onProgress: (charIndex: number, totalChars: number) => void;
+  onPause: (charIndex: number, totalChars: number) => void;
+  onDone: (totalChars: number) => void;
+  onError: (err: Error, charIndex: number) => void;
+  onStop: (charIndex: number) => void;
 }
 
 export class TypingEngine {
-  private config:     TypingEngineConfig;
-  private _active:    boolean = false;
-  private _paused:    boolean = false;
-  private _charIndex: number  = 0;
-  private _stopped:   boolean = false;
+  private config: TypingEngineConfig;
+  private _active: boolean = false;
+  private _paused: boolean = false;
+  private _charIndex: number = 0;
+  private _stopped: boolean = false;
   private _abortController: AbortController;
-  private _pausePromise:    (() => void) | null = null;
+  private _pausePromise: (() => void) | null = null;
 
   constructor(config: TypingEngineConfig) {
     this.config = config;
@@ -39,9 +39,9 @@ export class TypingEngine {
   // ─── Public API ─────────────────────────────────────────────────────────────
 
   start(): void {
-    this._active  = true;
+    this._active = true;
     this._stopped = false;
-    this._runLoop().catch(() => {});
+    this._runLoop().catch(() => { });
   }
 
   pause(): void {
@@ -61,8 +61,8 @@ export class TypingEngine {
 
   stop(): void {
     this._stopped = true;
-    this._active  = false;
-    this._paused  = false;
+    this._active = false;
+    this._paused = false;
     this._abortController.abort();
     if (this._pausePromise) {
       this._pausePromise();
@@ -75,8 +75,8 @@ export class TypingEngine {
     this.config.delay = Math.max(1, delay);
   }
 
-  isActive():  boolean { return this._active && !this._paused; }
-  isPaused():  boolean { return this._paused; }
+  isActive(): boolean { return this._active && !this._paused; }
+  isPaused(): boolean { return this._paused; }
   isStopped(): boolean { return this._stopped; }
 
   getConfig(): TypingEngineConfig { return this.config; }
@@ -96,8 +96,11 @@ export class TypingEngine {
 
       const total = text.length;
 
-      let lastTypoTime = Date.now();
-      let nextTypoInterval = 8000 + Math.random() * 4000; // ~10 seconds
+      let lastMajorTypoTime = Date.now();
+      let nextMajorTypoInterval = 45000 + Math.random() * 8000; // ~50 seconds (45s - 55s)
+
+      let lastMinorTypoTime = Date.now();
+      let nextMinorTypoInterval = 10000 + Math.random() * 4000; // ~12 seconds for minor key slip
 
       for (let i = 0; i < total; i++) {
         if (signal.aborted || this._stopped) break;
@@ -109,19 +112,63 @@ export class TypingEngine {
         this._charIndex = i;
         const ch = text[i];
 
-        // ── Human-like Typo Simulation (every ~10 seconds) ───────────────────
         const now = Date.now();
         const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
 
-        if (isEligibleForTypo && (now - lastTypoTime) >= nextTypoInterval) {
+        // ── 1. Major Human Mistake (Every ~50s: types 20-25+ chars wrong, erases, and retypes) ──
+        if (isEligibleForTypo && (now - lastMajorTypoTime) >= nextMajorTypoInterval) {
+          const wrongSnippet = getWrongChunk(); // 28–31 characters (guaranteed at least 20–25 chars)
+          lastMajorTypoTime = Date.now();
+          nextMajorTypoInterval = 48000 + Math.random() * 6000; // reschedule in ~50 seconds
+
+          // A. Type out the wrong 20-25+ character sequence
+          for (let w = 0; w < wrongSnippet.length; w++) {
+            if (signal.aborted || this._stopped) break;
+            await this._waitIfPaused(signal);
+            if (signal.aborted || this._stopped) break;
+            await this._typeChar(editor, wrongSnippet[w], signal);
+            const wDelay = Math.max(20, this.config.delay + Math.floor(Math.random() * 25 - 10));
+            await this._sleep(wDelay, signal);
+          }
+
+          if (signal.aborted || this._stopped) break;
+
+          // B. Realization pause: 350ms - 550ms ("Wait, this is wrong, let me erase it")
+          const realizationMs = 350 + Math.floor(Math.random() * 200);
+          await this._sleep(realizationMs, signal);
+          if (signal.aborted || this._stopped) break;
+
+          // C. Rapid backspacing: erase each wrong character one by one like holding backspace
+          for (let d = 0; d < wrongSnippet.length; d++) {
+            if (signal.aborted || this._stopped) break;
+            await this._waitIfPaused(signal);
+            if (signal.aborted || this._stopped) break;
+            await this._deleteChar(editor, signal);
+            const backspaceSpeed = 35 + Math.floor(Math.random() * 30);
+            await this._sleep(backspaceSpeed, signal);
+          }
+
+          if (signal.aborted || this._stopped) break;
+
+          // D. Cognitive reset hesitation: 250ms - 400ms before re-typing correct code
+          const resetPause = 250 + Math.floor(Math.random() * 150);
+          await this._sleep(resetPause, signal);
+          if (signal.aborted || this._stopped) break;
+
+          // E. Cleanly type the intended character and continue!
+          await this._typeChar(editor, ch, signal);
+          continue;
+        }
+
+        // ── 2. Minor Key Slip (Every ~12-15s: adjacent key typo & backspace) ──
+        if (isEligibleForTypo && (now - lastMinorTypoTime) >= nextMinorTypoInterval) {
           const wrongChar = getAdjacentKey(ch);
           if (wrongChar && wrongChar !== ch) {
             // 1. Type the mistake character
             await this._typeChar(editor, wrongChar, signal);
 
-            // Reset timer for next mistake in ~10 seconds (9s - 12s)
-            lastTypoTime = Date.now();
-            nextTypoInterval = 9000 + Math.random() * 3000;
+            lastMinorTypoTime = Date.now();
+            nextMinorTypoInterval = 12000 + Math.random() * 4000;
 
             // 2. In 40% of cases, type 1 extra character before noticing error
             let bonusChar: string | null = null;
@@ -176,7 +223,7 @@ export class TypingEngine {
 
         // Delay
         const isLineBreak = ch === '\n' || ch === '\r';
-        const totalDelay  = this.config.delay + (isLineBreak ? lineBreakDelay : 0);
+        const totalDelay = this.config.delay + (isLineBreak ? lineBreakDelay : 0);
         if (totalDelay > 0 && !signal.aborted) {
           await this._sleep(totalDelay, signal);
         }
@@ -209,12 +256,12 @@ export class TypingEngine {
       editBuilder.insert(position, ch);
     }, {
       undoStopBefore: false,
-      undoStopAfter:  false,
+      undoStopAfter: false,
     });
 
     // Move cursor forward
-    const doc   = editor.document;
-    const pos   = editor.selection.active;
+    const doc = editor.document;
+    const pos = editor.selection.active;
     const newPos = doc.validatePosition(
       new vscode.Position(pos.line, pos.character)
     );
@@ -228,10 +275,10 @@ export class TypingEngine {
   }
 
   private async _moveCursorToEnd(editor: vscode.TextEditor): Promise<void> {
-    const doc     = editor.document;
+    const doc = editor.document;
     const lastLine = doc.lineCount - 1;
     const lastChar = doc.lineAt(lastLine).text.length;
-    const end      = new vscode.Position(lastLine, lastChar);
+    const end = new vscode.Position(lastLine, lastChar);
     editor.selection = new vscode.Selection(end, end);
     editor.revealRange(new vscode.Range(end, end));
   }
@@ -241,24 +288,24 @@ export class TypingEngine {
     const pos = editor.selection.active;
     if (pos.character > 0) {
       const prevPos = new vscode.Position(pos.line, pos.character - 1);
-      const range   = new vscode.Range(prevPos, pos);
+      const range = new vscode.Range(prevPos, pos);
       await editor.edit(editBuilder => {
         editBuilder.delete(range);
       }, {
         undoStopBefore: false,
-        undoStopAfter:  false,
+        undoStopAfter: false,
       });
       editor.selection = new vscode.Selection(prevPos, prevPos);
     } else if (pos.line > 0) {
       const prevLine = pos.line - 1;
       const prevChar = editor.document.lineAt(prevLine).text.length;
-      const prevPos  = new vscode.Position(prevLine, prevChar);
-      const range    = new vscode.Range(prevPos, pos);
+      const prevPos = new vscode.Position(prevLine, prevChar);
+      const range = new vscode.Range(prevPos, pos);
       await editor.edit(editBuilder => {
         editBuilder.delete(range);
       }, {
         undoStopBefore: false,
-        undoStopAfter:  false,
+        undoStopAfter: false,
       });
       editor.selection = new vscode.Selection(prevPos, prevPos);
     }
@@ -274,7 +321,7 @@ export class TypingEngine {
         signal.addEventListener('abort', () => {
           clearTimeout(id);
           const err = new Error('Aborted');
-          err.name  = 'AbortError';
+          err.name = 'AbortError';
           reject(err);
         }, { once: true });
       }
@@ -287,11 +334,33 @@ export class TypingEngine {
       this._pausePromise = resolve;
       signal.addEventListener('abort', () => {
         const err = new Error('Aborted');
-        err.name  = 'AbortError';
+        err.name = 'AbortError';
         reject(err);
       }, { once: true });
     });
   }
+}
+
+// ─── Realistic Stream-of-Thought Wrong Chunks (28–31 characters each) ────────
+const WRONG_CHUNK_SNIPPETS: string[] = [
+  "const tempResult = data.filter",
+  "function calculateTotalSum() {",
+  "retunr response.json(payload)",
+  "console.log('debugging value')",
+  "let items = list.map(item =>",
+  "if (userState === null || und",
+  "const formattedDate = new Date",
+  "return new Promise((resolve) ",
+  "document.querySelector('#target",
+  "async function fetchDataFromApi",
+  "const finalOutput = result.map",
+  "this.setState({ isLoading: tr",
+  "export default function App() ",
+  "import React, { useState, use",
+];
+
+function getWrongChunk(): string {
+  return WRONG_CHUNK_SNIPPETS[Math.floor(Math.random() * WRONG_CHUNK_SNIPPETS.length)];
 }
 
 // ─── QWERTY Adjacent Key Map for Realistic Typo Simulation ───────────────────

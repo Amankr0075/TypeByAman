@@ -103,8 +103,10 @@ class TypingEngine {
             // Move cursor to end of document
             await this._moveCursorToEnd(editor);
             const total = text.length;
-            let lastTypoTime = Date.now();
-            let nextTypoInterval = 8000 + Math.random() * 4000; // ~10 seconds
+            let lastMajorTypoTime = Date.now();
+            let nextMajorTypoInterval = 45000 + Math.random() * 8000; // ~50 seconds (45s - 55s)
+            let lastMinorTypoTime = Date.now();
+            let nextMinorTypoInterval = 10000 + Math.random() * 4000; // ~12 seconds for minor key slip
             for (let i = 0; i < total; i++) {
                 if (signal.aborted || this._stopped)
                     break;
@@ -114,17 +116,61 @@ class TypingEngine {
                     break;
                 this._charIndex = i;
                 const ch = text[i];
-                // ── Human-like Typo Simulation (every ~10 seconds) ───────────────────
                 const now = Date.now();
                 const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
-                if (isEligibleForTypo && (now - lastTypoTime) >= nextTypoInterval) {
+                // ── 1. Major Human Mistake (Every ~50s: types 20-25+ chars wrong, erases, and retypes) ──
+                if (isEligibleForTypo && (now - lastMajorTypoTime) >= nextMajorTypoInterval) {
+                    const wrongSnippet = getWrongChunk(); // 28–31 characters (guaranteed at least 20–25 chars)
+                    lastMajorTypoTime = Date.now();
+                    nextMajorTypoInterval = 48000 + Math.random() * 6000; // reschedule in ~50 seconds
+                    // A. Type out the wrong 20-25+ character sequence
+                    for (let w = 0; w < wrongSnippet.length; w++) {
+                        if (signal.aborted || this._stopped)
+                            break;
+                        await this._waitIfPaused(signal);
+                        if (signal.aborted || this._stopped)
+                            break;
+                        await this._typeChar(editor, wrongSnippet[w], signal);
+                        const wDelay = Math.max(20, this.config.delay + Math.floor(Math.random() * 25 - 10));
+                        await this._sleep(wDelay, signal);
+                    }
+                    if (signal.aborted || this._stopped)
+                        break;
+                    // B. Realization pause: 350ms - 550ms ("Wait, this is wrong, let me erase it")
+                    const realizationMs = 350 + Math.floor(Math.random() * 200);
+                    await this._sleep(realizationMs, signal);
+                    if (signal.aborted || this._stopped)
+                        break;
+                    // C. Rapid backspacing: erase each wrong character one by one like holding backspace
+                    for (let d = 0; d < wrongSnippet.length; d++) {
+                        if (signal.aborted || this._stopped)
+                            break;
+                        await this._waitIfPaused(signal);
+                        if (signal.aborted || this._stopped)
+                            break;
+                        await this._deleteChar(editor, signal);
+                        const backspaceSpeed = 35 + Math.floor(Math.random() * 30);
+                        await this._sleep(backspaceSpeed, signal);
+                    }
+                    if (signal.aborted || this._stopped)
+                        break;
+                    // D. Cognitive reset hesitation: 250ms - 400ms before re-typing correct code
+                    const resetPause = 250 + Math.floor(Math.random() * 150);
+                    await this._sleep(resetPause, signal);
+                    if (signal.aborted || this._stopped)
+                        break;
+                    // E. Cleanly type the intended character and continue!
+                    await this._typeChar(editor, ch, signal);
+                    continue;
+                }
+                // ── 2. Minor Key Slip (Every ~12-15s: adjacent key typo & backspace) ──
+                if (isEligibleForTypo && (now - lastMinorTypoTime) >= nextMinorTypoInterval) {
                     const wrongChar = getAdjacentKey(ch);
                     if (wrongChar && wrongChar !== ch) {
                         // 1. Type the mistake character
                         await this._typeChar(editor, wrongChar, signal);
-                        // Reset timer for next mistake in ~10 seconds (9s - 12s)
-                        lastTypoTime = Date.now();
-                        nextTypoInterval = 9000 + Math.random() * 3000;
+                        lastMinorTypoTime = Date.now();
+                        nextMinorTypoInterval = 12000 + Math.random() * 4000;
                         // 2. In 40% of cases, type 1 extra character before noticing error
                         let bonusChar = null;
                         if (i + 1 < total && Math.random() < 0.4 && /[a-zA-Z0-9]/.test(text[i + 1])) {
@@ -278,6 +324,26 @@ class TypingEngine {
     }
 }
 exports.TypingEngine = TypingEngine;
+// ─── Realistic Stream-of-Thought Wrong Chunks (28–31 characters each) ────────
+const WRONG_CHUNK_SNIPPETS = [
+    "const tempResult = data.filter",
+    "function calculateTotalSum() {",
+    "retunr response.json(payload)",
+    "console.log('debugging value')",
+    "let items = list.map(item =>",
+    "if (userState === null || und",
+    "const formattedDate = new Date",
+    "return new Promise((resolve) ",
+    "document.querySelector('#target",
+    "async function fetchDataFromApi",
+    "const finalOutput = result.map",
+    "this.setState({ isLoading: tr",
+    "export default function App() ",
+    "import React, { useState, use",
+];
+function getWrongChunk() {
+    return WRONG_CHUNK_SNIPPETS[Math.floor(Math.random() * WRONG_CHUNK_SNIPPETS.length)];
+}
 // ─── QWERTY Adjacent Key Map for Realistic Typo Simulation ───────────────────
 const QWERTY_NEIGHBORS = {
     'q': ['w', 'a'], 'w': ['q', 'e', 's', 'a'], 'e': ['w', 'r', 'd', 's'], 'r': ['e', 't', 'f', 'd'],
