@@ -14,6 +14,7 @@
 [![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen.svg)](https://amankr0075.github.io/TypeByAman/)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)](chrome-extension/)
 [![VS Code Extension](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](vscode-extension/)
+[![GitHub Stars](https://img.shields.io/github/stars/Amankr0075/TypeByAman?style=social)](https://github.com/Amankr0075/TypeByAman)
 [![Author](https://img.shields.io/badge/Author-Aman%20Kumar-purple.svg)](https://github.com/Amankr0075)
 
 </div>
@@ -354,6 +355,14 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+---
+
+## ⭐ Support & Acknowledgements
+
+If you find **TypeByAman** helpful or valuable for your workflow, demos, or tutorials, please consider giving this repository a **star (★)** on GitHub. Your support is greatly appreciated and helps motivate ongoing improvements and maintenance.
+
+[![Star on GitHub](https://img.shields.io/badge/Star%20on%20GitHub-★%20TypeByAman-yellow?style=for-the-badge&logo=github)](https://github.com/Amankr0075/TypeByAman)
 
 ---
 
