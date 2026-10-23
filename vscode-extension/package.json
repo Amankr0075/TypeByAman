@@ -9,10 +9,10 @@
     "url": "https://github.com/Amankr0075"
   },
   "license": "MIT",
-  "homepage": "https://github.com/Amankr0075",
+  "homepage": "https://amankr0075.github.io/TypeByAman/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Amankr0075/typebyaman"
+    "url": "https://github.com/Amankr0075/TypeByAman.git"
   },
   "engines": {
     "vscode": "^1.80.0"
