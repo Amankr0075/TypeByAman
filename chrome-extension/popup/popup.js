@@ -11,76 +11,76 @@
 // ─── Constants ─────────────────────────────────────────────────────────────
 
 const STORAGE_KEYS = {
-  THEME:           'tba_theme',
-  DELAY:           'tba_delay',
+  THEME: 'tba_theme',
+  DELAY: 'tba_delay',
   LINEBREAK_DELAY: 'tba_linebreak_delay',
-  START_DELAY:     'tba_start_delay',
-  TEXT:            'tba_last_text',
-  CUSTOM_MODE:     'tba_custom_mode',
+  START_DELAY: 'tba_start_delay',
+  TEXT: 'tba_last_text',
+  CUSTOM_MODE: 'tba_custom_mode',
 };
 
 const SPEED_PRESETS = {
   'Very Slow': 1000,
-  'Slow':      250,
-  'Normal':    50,
-  'Fast':      20,
+  'Slow': 250,
+  'Normal': 50,
+  'Fast': 20,
   'Very Fast': 5,
-  'Custom':    null,
+  'Custom': null,
 };
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
 let state = {
-  status:        'idle',   // idle | typing | paused | done | error
-  delay:         50,
-  linebreakDelay:0,
-  startDelay:    0,
-  charIndex:     0,
-  totalChars:    0,
-  text:          '',
-  customMode:    false,
-  targetTabId:   null,
-  theme:         'dark',
+  status: 'idle',   // idle | typing | paused | done | error
+  delay: 50,
+  linebreakDelay: 0,
+  startDelay: 0,
+  charIndex: 0,
+  totalChars: 0,
+  text: '',
+  customMode: false,
+  targetTabId: null,
+  theme: 'dark',
 };
 
 // ─── DOM References ─────────────────────────────────────────────────────────
 
 const $ = id => document.getElementById(id);
 const els = {
-  body:              document.body,
-  btnTheme:          $('btn-theme-toggle'),
-  iconMoon:          $('icon-moon'),
-  iconSun:           $('icon-sun'),
-  btnSettings:       $('btn-settings'),
-  tabs:              document.querySelectorAll('.tab-btn'),
-  panels:            document.querySelectorAll('.tab-panel'),
-  valChars:          $('val-chars'),
-  valProgress:       $('val-progress'),
-  valSpeed:          $('val-speed'),
-  valStatus:         $('val-status'),
-  progressFill:      $('progress-fill'),
-  progressGlow:      $('progress-glow'),
-  progressBar:       $('progress-bar-container'),
-  textInput:         $('text-input'),
-  textareaInfo:      $('textarea-char-count'),
-  btnPaste:          $('btn-paste'),
-  btnClearText:      $('btn-clear-text'),
-  speedDisplay:      $('speed-display-value'),
-  presetBtns:        document.querySelectorAll('.preset-btn'),
-  customPanel:       $('custom-speed-panel'),
-  speedSlider:       $('speed-slider'),
-  delayChips:        document.querySelectorAll('.delay-chip'),
-  customDelayInput:  $('custom-delay-input'),
-  linebreakDelay:    $('linebreak-delay'),
-  startDelay:        $('start-delay'),
-  btnStart:          $('btn-start'),
-  btnPause:          $('btn-pause'),
-  btnResume:         $('btn-resume'),
-  btnStop:           $('btn-stop'),
-  btnRestart:        $('btn-restart'),
-  messageArea:       $('message-area'),
-  messageContent:    $('message-content'),
-  btnOpenOptions:    $('btn-open-options'),
+  body: document.body,
+  btnTheme: $('btn-theme-toggle'),
+  iconMoon: $('icon-moon'),
+  iconSun: $('icon-sun'),
+  btnSettings: $('btn-settings'),
+  tabs: document.querySelectorAll('.tab-btn'),
+  panels: document.querySelectorAll('.tab-panel'),
+  valChars: $('val-chars'),
+  valProgress: $('val-progress'),
+  valSpeed: $('val-speed'),
+  valStatus: $('val-status'),
+  progressFill: $('progress-fill'),
+  progressGlow: $('progress-glow'),
+  progressBar: $('progress-bar-container'),
+  textInput: $('text-input'),
+  textareaInfo: $('textarea-char-count'),
+  btnPaste: $('btn-paste'),
+  btnClearText: $('btn-clear-text'),
+  speedDisplay: $('speed-display-value'),
+  presetBtns: document.querySelectorAll('.preset-btn'),
+  customPanel: $('custom-speed-panel'),
+  speedSlider: $('speed-slider'),
+  delayChips: document.querySelectorAll('.delay-chip'),
+  customDelayInput: $('custom-delay-input'),
+  linebreakDelay: $('linebreak-delay'),
+  startDelay: $('start-delay'),
+  btnStart: $('btn-start'),
+  btnPause: $('btn-pause'),
+  btnResume: $('btn-resume'),
+  btnStop: $('btn-stop'),
+  btnRestart: $('btn-restart'),
+  messageArea: $('message-area'),
+  messageContent: $('message-content'),
+  btnOpenOptions: $('btn-open-options'),
 };
 
 // ─── Initialization ──────────────────────────────────────────────────────────
@@ -97,11 +97,11 @@ async function init() {
 async function loadSettings() {
   return new Promise(resolve => {
     chrome.storage.local.get(Object.values(STORAGE_KEYS), result => {
-      state.theme          = result[STORAGE_KEYS.THEME] || 'dark';
-      state.delay          = parseInt(result[STORAGE_KEYS.DELAY]) || 50;
+      state.theme = result[STORAGE_KEYS.THEME] || 'dark';
+      state.delay = parseInt(result[STORAGE_KEYS.DELAY]) || 50;
       state.linebreakDelay = parseInt(result[STORAGE_KEYS.LINEBREAK_DELAY]) || 0;
-      state.startDelay     = parseInt(result[STORAGE_KEYS.START_DELAY]) || 0;
-      state.customMode     = result[STORAGE_KEYS.CUSTOM_MODE] || false;
+      state.startDelay = parseInt(result[STORAGE_KEYS.START_DELAY]) || 0;
+      state.customMode = result[STORAGE_KEYS.CUSTOM_MODE] || false;
 
       const savedText = result[STORAGE_KEYS.TEXT] || '';
       if (savedText) {
@@ -114,7 +114,7 @@ async function loadSettings() {
       applyTheme(state.theme);
       applyDelay(state.delay, false);
       els.linebreakDelay.value = state.linebreakDelay;
-      els.startDelay.value     = state.startDelay;
+      els.startDelay.value = state.startDelay;
 
       if (state.customMode) {
         showCustomPanel(true);
@@ -127,12 +127,12 @@ async function loadSettings() {
 
 function saveSettings() {
   chrome.storage.local.set({
-    [STORAGE_KEYS.THEME]:           state.theme,
-    [STORAGE_KEYS.DELAY]:           state.delay,
+    [STORAGE_KEYS.THEME]: state.theme,
+    [STORAGE_KEYS.DELAY]: state.delay,
     [STORAGE_KEYS.LINEBREAK_DELAY]: state.linebreakDelay,
-    [STORAGE_KEYS.START_DELAY]:     state.startDelay,
-    [STORAGE_KEYS.TEXT]:            els.textInput.value.substring(0, 50000),
-    [STORAGE_KEYS.CUSTOM_MODE]:     state.customMode,
+    [STORAGE_KEYS.START_DELAY]: state.startDelay,
+    [STORAGE_KEYS.TEXT]: els.textInput.value.substring(0, 50000),
+    [STORAGE_KEYS.CUSTOM_MODE]: state.customMode,
   });
 }
 
@@ -143,10 +143,10 @@ function applyTheme(theme) {
   els.body.setAttribute('data-theme', theme);
   if (theme === 'dark') {
     els.iconMoon.style.display = 'block';
-    els.iconSun.style.display  = 'none';
+    els.iconSun.style.display = 'none';
   } else {
     els.iconMoon.style.display = 'none';
-    els.iconSun.style.display  = 'block';
+    els.iconSun.style.display = 'block';
   }
 }
 
@@ -161,10 +161,10 @@ function applyDelay(delay, save = true) {
   delay = Math.max(1, Math.min(9999, parseInt(delay) || 50));
   state.delay = delay;
 
-  els.speedDisplay.textContent  = delay;
-  els.valSpeed.textContent      = `${delay} ms`;
-  els.speedSlider.value         = Math.min(delay, 2000);
-  els.customDelayInput.value    = delay;
+  els.speedDisplay.textContent = delay;
+  els.valSpeed.textContent = `${delay} ms`;
+  els.speedSlider.value = Math.min(delay, 2000);
+  els.customDelayInput.value = delay;
 
   // Highlight matching preset
   els.presetBtns.forEach(btn => {
@@ -208,8 +208,8 @@ function switchTab(tabName) {
 // ─── Status Updates ──────────────────────────────────────────────────────────
 
 function updateStatus(status, charIndex, totalChars) {
-  state.status    = status;
-  state.charIndex = charIndex  !== undefined ? charIndex  : state.charIndex;
+  state.status = status;
+  state.charIndex = charIndex !== undefined ? charIndex : state.charIndex;
   state.totalChars = totalChars !== undefined ? totalChars : state.totalChars;
   updateUI();
 }
@@ -224,9 +224,9 @@ function updateUI() {
 
   // Chars & progress
   const pct = totalChars > 0 ? Math.round((charIndex / totalChars) * 100) : 0;
-  els.valChars.textContent    = `${charIndex.toLocaleString()} / ${totalChars.toLocaleString()}`;
+  els.valChars.textContent = `${charIndex.toLocaleString()} / ${totalChars.toLocaleString()}`;
   els.valProgress.textContent = `${pct}%`;
-  els.valSpeed.textContent    = `${delay} ms`;
+  els.valSpeed.textContent = `${delay} ms`;
 
   // Progress bar
   els.progressFill.style.width = `${pct}%`;
@@ -234,14 +234,14 @@ function updateUI() {
   els.progressBar.setAttribute('aria-valuenow', pct);
 
   // Button states
-  const isIdle    = status === 'idle' || status === 'done' || status === 'error';
-  const isTyping  = status === 'typing';
-  const isPaused  = status === 'paused';
+  const isIdle = status === 'idle' || status === 'done' || status === 'error';
+  const isTyping = status === 'typing';
+  const isPaused = status === 'paused';
 
-  els.btnStart.disabled   = isTyping || isPaused;
-  els.btnPause.disabled   = !isTyping;
-  els.btnResume.disabled  = !isPaused;
-  els.btnStop.disabled    = isIdle;
+  els.btnStart.disabled = isTyping || isPaused;
+  els.btnPause.disabled = !isTyping;
+  els.btnResume.disabled = !isPaused;
+  els.btnStop.disabled = isIdle;
   els.btnRestart.disabled = isIdle && charIndex === 0;
 }
 
@@ -259,7 +259,7 @@ let messageTimer = null;
 
 function showMessage(text, type = 'info', duration = 4000) {
   clearTimeout(messageTimer);
-  els.messageArea.className   = `message-area ${type}`;
+  els.messageArea.className = `message-area ${type}`;
   els.messageContent.textContent = text;
   els.messageArea.style.display = 'block';
   if (duration > 0) {
@@ -313,11 +313,11 @@ async function startTyping() {
   hideMessage();
 
   const config = {
-    action:        'startTyping',
-    text:          text,
-    delay:         state.delay,
-    linebreakDelay:state.linebreakDelay,
-    startDelay:    state.startDelay,
+    action: 'startTyping',
+    text: text,
+    delay: state.delay,
+    linebreakDelay: state.linebreakDelay,
+    startDelay: state.startDelay,
   };
 
   const response = await sendToContent(config);
@@ -331,7 +331,7 @@ async function startTyping() {
     return;
   }
 
-  state.text       = text;
+  state.text = text;
   state.totalChars = text.length;
   saveSettings();
   updateStatus('typing', 0, text.length);
@@ -396,7 +396,7 @@ function bindEvents() {
     if (e.key === 'Tab') {
       e.preventDefault();
       const start = e.target.selectionStart;
-      const end   = e.target.selectionEnd;
+      const end = e.target.selectionEnd;
       e.target.value = e.target.value.substring(0, start) + '\t' + e.target.value.substring(end);
       e.target.selectionStart = e.target.selectionEnd = start + 1;
       els.textInput.dispatchEvent(new Event('input'));
@@ -485,10 +485,10 @@ function bindEvents() {
   });
 
   // Control buttons
-  els.btnStart.addEventListener('click',   startTyping);
-  els.btnPause.addEventListener('click',   pauseTyping);
-  els.btnResume.addEventListener('click',  resumeTyping);
-  els.btnStop.addEventListener('click',    stopTyping);
+  els.btnStart.addEventListener('click', startTyping);
+  els.btnPause.addEventListener('click', pauseTyping);
+  els.btnResume.addEventListener('click', resumeTyping);
+  els.btnStop.addEventListener('click', stopTyping);
   els.btnRestart.addEventListener('click', restartTyping);
 
   // Open options
