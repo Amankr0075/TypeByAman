@@ -65,9 +65,6 @@ const els = {
   textareaInfo:      $('textarea-char-count'),
   btnPaste:          $('btn-paste'),
   btnClearText:      $('btn-clear-text'),
-  btnPickTarget:     $('btn-pick-target'),
-  targetDot:         $('target-dot'),
-  targetLabel:       $('target-label'),
   speedDisplay:      $('speed-display-value'),
   presetBtns:        document.querySelectorAll('.preset-btn'),
   customPanel:       $('custom-speed-panel'),
@@ -301,42 +298,6 @@ async function syncWithContentScript() {
   }
 }
 
-// ─── Target Picking ──────────────────────────────────────────────────────────
-
-let isPicking = false;
-
-async function startPickTarget() {
-  if (isPicking) {
-    stopPickTarget();
-    return;
-  }
-  isPicking = true;
-  els.btnPickTarget.classList.add('picking');
-  els.btnPickTarget.textContent = '⬡ Click a field…';
-  els.targetDot.className = 'target-dot picking';
-  els.targetLabel.textContent = 'Click any input on the page…';
-
-  const response = await sendToContent({ action: 'startPicking' });
-  if (!response || response.error) {
-    stopPickTarget();
-    showMessage('Could not activate field picker on this page. Try refreshing.', 'error');
-  }
-}
-
-function stopPickTarget() {
-  isPicking = false;
-  els.btnPickTarget.classList.remove('picking');
-  els.btnPickTarget.innerHTML = `
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-    Pick Target Field`;
-}
-
-function setTargetConnected(label) {
-  stopPickTarget();
-  els.targetDot.className = 'target-dot connected';
-  els.targetLabel.textContent = label || 'Target selected';
-}
-
 // ─── Typing Controls ─────────────────────────────────────────────────────────
 
 async function startTyping() {
@@ -362,7 +323,7 @@ async function startTyping() {
   const response = await sendToContent(config);
 
   if (!response) {
-    showMessage('No target page detected. Make sure a web page is open and a target field is selected.', 'error');
+    showMessage('No active page found. Open a web page, click into a text field, then click Start.', 'error');
     return;
   }
   if (response.error) {
@@ -463,8 +424,7 @@ function bindEvents() {
     hideMessage();
   });
 
-  // Pick target
-  els.btnPickTarget.addEventListener('click', startPickTarget);
+  // (Pick Target removed — auto-detection handles field targeting)
 
   // Speed presets
   els.presetBtns.forEach(btn => {
@@ -543,9 +503,6 @@ function bindEvents() {
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.action === 'statusUpdate') {
       updateStatus(msg.status, msg.charIndex, msg.totalChars);
-    }
-    if (msg.action === 'targetPicked') {
-      setTargetConnected(msg.label);
     }
     if (msg.action === 'typingError') {
       updateStatus('error', msg.charIndex, state.totalChars);
