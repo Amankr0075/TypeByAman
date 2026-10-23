@@ -19,19 +19,19 @@
   // ─── State ─────────────────────────────────────────────────────────────────
 
   let typingState = {
-    active:          false,
-    paused:          false,
-    charIndex:       0,
-    text:            '',
-    totalChars:      0,
-    delay:           50,
-    linebreakDelay:  0,
-    targetElement:   null,
-    pauseResolve:    null,
-    abortSignal:     null,
+    active: false,
+    paused: false,
+    charIndex: 0,
+    text: '',
+    totalChars: 0,
+    delay: 50,
+    linebreakDelay: 0,
+    targetElement: null,
+    pauseResolve: null,
+    abortSignal: null,
     abortController: null,
-    humanTypoMode:   true,   // enable human-like typo simulation by default
-    typoRate:        0.06,   // ~6% chance of a typo per eligible character
+    humanTypoMode: true,   // enable human-like typo simulation by default
+    typoRate: 0.06,   // ~6% chance of a typo per eligible character
   };
 
   let isPicking = false;
@@ -205,7 +205,7 @@
     if (!el) return 'unknown';
     if (el.closest('.monaco-editor')) return 'monaco';
     if (el.closest('.CodeMirror') || el.closest('.cm-editor')) return 'codemirror';
-    if (el.closest('.ace_editor'))    return 'ace';
+    if (el.closest('.ace_editor')) return 'ace';
     if (el.isContentEditable || el.closest('[contenteditable="true"]')) return 'contenteditable';
     if (el.tagName.toLowerCase() === 'textarea') return 'textarea';
     return 'input';
@@ -213,13 +213,13 @@
 
   function getElementLabel(el) {
     if (!el) return '';
-    const tag   = el.tagName.toLowerCase();
-    const id    = el.id ? `#${el.id}` : '';
-    const name  = el.name ? `[name="${el.name}"]` : '';
+    const tag = el.tagName.toLowerCase();
+    const id = el.id ? `#${el.id}` : '';
+    const name = el.name ? `[name="${el.name}"]` : '';
     const placeholder = el.placeholder ? `[${el.placeholder.substring(0, 15)}]` : '';
-    const cls   = el.className && typeof el.className === 'string'
+    const cls = el.className && typeof el.className === 'string'
       ? '.' + el.className.trim().split(/\s+/).slice(0, 1).join('.') : '';
-    const type  = el.type ? `[${el.type}]` : '';
+    const type = el.type ? `[${el.type}]` : '';
     return `${tag}${type}${id || name || placeholder || cls}`.substring(0, 45);
   }
 
@@ -270,7 +270,7 @@
     if (target) {
       typingState.targetElement = target;
       lastInteractedElement = target;
-      try { target.focus(); } catch {}
+      try { target.focus(); } catch { }
       const label = getElementLabel(target);
       stopPicking();
       showFeedback(`Target Selected: ${label}`, 'success');
@@ -303,8 +303,8 @@
   function addHighlight(el) {
     if (!el) return;
     el.dataset.tbaHighlight = 'true';
-    el.style.outline        = '2px solid #4f8ef7';
-    el.style.outlineOffset  = '1px';
+    el.style.outline = '2px solid #4f8ef7';
+    el.style.outlineOffset = '1px';
   }
 
   function removeHighlight() {
@@ -341,20 +341,20 @@
     const ac = new AbortController();
     typingState = {
       ...typingState,
-      active:          true,
-      paused:          false,
-      charIndex:       0,
-      text:            text,
-      totalChars:      text.length,
-      delay:           delay || 50,
-      linebreakDelay:  linebreakDelay || 0,
-      humanTypoMode:   humanTypoMode !== undefined ? humanTypoMode : typingState.humanTypoMode,
-      typoRate:        typoRate      !== undefined ? typoRate      : typingState.typoRate,
+      active: true,
+      paused: false,
+      charIndex: 0,
+      text: text,
+      totalChars: text.length,
+      delay: delay || 50,
+      linebreakDelay: linebreakDelay || 0,
+      humanTypoMode: humanTypoMode !== undefined ? humanTypoMode : typingState.humanTypoMode,
+      typoRate: typoRate !== undefined ? typoRate : typingState.typoRate,
       abortController: ac,
-      abortSignal:     ac.signal,
+      abortSignal: ac.signal,
     };
 
-    runTypingLoop(target, text, startDelay, ac.signal).catch(() => {});
+    runTypingLoop(target, text, startDelay, ac.signal).catch(() => { });
     return { ok: true, label: getElementLabel(target) };
   }
 
@@ -362,7 +362,7 @@
     try {
       if (startDelay > 0) await sleep(startDelay, signal);
 
-      try { el.focus(); } catch {}
+      try { el.focus(); } catch { }
 
       // If Monaco editor, focus the inputarea textarea
       if (getEditorType(el) === 'monaco') {
@@ -437,20 +437,20 @@
         // Progress update (throttled to every 50 chars for performance)
         if (i % 50 === 0 || i === text.length - 1) {
           chrome.runtime.sendMessage({
-            action:     'statusUpdate',
-            status:     'typing',
-            charIndex:  i + 1,
+            action: 'statusUpdate',
+            status: 'typing',
+            charIndex: i + 1,
             totalChars: text.length,
           });
         }
 
         // Natural variable delay: adds slight jitter to timing (±20%) for realism
         const isLineBreak = ch === '\n' || ch === '\r';
-        const extraDelay  = isLineBreak ? typingState.linebreakDelay : 0;
-        const jitter      = typingState.humanTypoMode
+        const extraDelay = isLineBreak ? typingState.linebreakDelay : 0;
+        const jitter = typingState.humanTypoMode
           ? Math.floor((Math.random() - 0.5) * typingState.delay * 0.4)
           : 0;
-        const totalDelay  = Math.max(1, typingState.delay + extraDelay + jitter);
+        const totalDelay = Math.max(1, typingState.delay + extraDelay + jitter);
         if (totalDelay > 0) await sleep(totalDelay, signal);
       }
 
@@ -458,7 +458,7 @@
         typingState.active = false;
         typingState.charIndex = text.length;
         chrome.runtime.sendMessage({
-          action:     'typingDone',
+          action: 'typingDone',
           totalChars: text.length,
         });
       }
@@ -467,8 +467,8 @@
       if (err.name !== 'AbortError') {
         typingState.active = false;
         chrome.runtime.sendMessage({
-          action:    'typingError',
-          error:     err.message,
+          action: 'typingError',
+          error: err.message,
           charIndex: typingState.charIndex,
         });
       }
@@ -501,7 +501,7 @@
     );
 
     const start = el.selectionStart ?? el.value.length;
-    const end   = el.selectionEnd   ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
 
     const newValue = el.value.substring(0, start) + ch + el.value.substring(end);
 
@@ -515,7 +515,7 @@
     el.selectionStart = el.selectionEnd = newPos;
 
     // Fire events that frameworks (React, Vue, Angular) listen to
-    el.dispatchEvent(new Event('input',  { bubbles: true, cancelable: false }));
+    el.dispatchEvent(new Event('input', { bubbles: true, cancelable: false }));
     el.dispatchEvent(new Event('change', { bubbles: true, cancelable: false }));
   }
 
@@ -593,7 +593,7 @@
         const editor = window.ace.edit(aceEl.id || aceEl);
         editor.insert(ch);
         return;
-      } catch {}
+      } catch { }
     }
     simulateKeyEvents(el, ch);
   }
@@ -603,16 +603,16 @@
   function simulateKeyEvents(el, ch) {
     const keyCode = ch.charCodeAt(0);
     const eventProps = {
-      key:      ch,
-      char:     ch,
-      keyCode:  keyCode,
-      which:    keyCode,
+      key: ch,
+      char: ch,
+      keyCode: keyCode,
+      which: keyCode,
       charCode: keyCode,
-      bubbles:  true,
+      bubbles: true,
       cancelable: true,
     };
 
-    el.dispatchEvent(new KeyboardEvent('keydown',  eventProps));
+    el.dispatchEvent(new KeyboardEvent('keydown', eventProps));
     el.dispatchEvent(new KeyboardEvent('keypress', eventProps));
 
     if (el.tagName.toLowerCase() === 'textarea' || el.tagName.toLowerCase() === 'input') {
@@ -629,24 +629,24 @@
   // QWERTY adjacent-key map: for each key, list of keys that fingers commonly
   // mistype (immediate left, right, above, below on a standard keyboard layout)
   const QWERTY_NEIGHBORS = {
-    'q':['w','a'],'w':['q','e','s','a'],'e':['w','r','d','s'],'r':['e','t','f','d'],
-    't':['r','y','g','f'],'y':['t','u','h','g'],'u':['y','i','j','h'],'i':['u','o','k','j'],
-    'o':['i','p','l','k'],'p':['o','[','l'],
-    'a':['q','w','s','z'],'s':['a','w','e','d','z','x'],'d':['s','e','r','f','x','c'],
-    'f':['d','r','t','g','c','v'],'g':['f','t','y','h','v','b'],'h':['g','y','u','j','b','n'],
-    'j':['h','u','i','k','n','m'],'k':['j','i','o','l','m',','],'l':['k','o','p',';',',','.'],
-    'z':['a','s','x'],'x':['z','s','d','c'],'c':['x','d','f','v'],'v':['c','f','g','b'],
-    'b':['v','g','h','n'],'n':['b','h','j','m'],'m':['n','j','k',','],
-    '1':['2','q'],'2':['1','3','q','w'],'3':['2','4','w','e'],'4':['3','5','e','r'],
-    '5':['4','6','r','t'],'6':['5','7','t','y'],'7':['6','8','y','u'],'8':['7','9','u','i'],
-    '9':['8','0','i','o'],'0':['9','-','o','p'],
-    ' ':[' '], // space typo: double-space, handled separately
+    'q': ['w', 'a'], 'w': ['q', 'e', 's', 'a'], 'e': ['w', 'r', 'd', 's'], 'r': ['e', 't', 'f', 'd'],
+    't': ['r', 'y', 'g', 'f'], 'y': ['t', 'u', 'h', 'g'], 'u': ['y', 'i', 'j', 'h'], 'i': ['u', 'o', 'k', 'j'],
+    'o': ['i', 'p', 'l', 'k'], 'p': ['o', '[', 'l'],
+    'a': ['q', 'w', 's', 'z'], 's': ['a', 'w', 'e', 'd', 'z', 'x'], 'd': ['s', 'e', 'r', 'f', 'x', 'c'],
+    'f': ['d', 'r', 't', 'g', 'c', 'v'], 'g': ['f', 't', 'y', 'h', 'v', 'b'], 'h': ['g', 'y', 'u', 'j', 'b', 'n'],
+    'j': ['h', 'u', 'i', 'k', 'n', 'm'], 'k': ['j', 'i', 'o', 'l', 'm', ','], 'l': ['k', 'o', 'p', ';', ',', '.'],
+    'z': ['a', 's', 'x'], 'x': ['z', 's', 'd', 'c'], 'c': ['x', 'd', 'f', 'v'], 'v': ['c', 'f', 'g', 'b'],
+    'b': ['v', 'g', 'h', 'n'], 'n': ['b', 'h', 'j', 'm'], 'm': ['n', 'j', 'k', ','],
+    '1': ['2', 'q'], '2': ['1', '3', 'q', 'w'], '3': ['2', '4', 'w', 'e'], '4': ['3', '5', 'e', 'r'],
+    '5': ['4', '6', 'r', 't'], '6': ['5', '7', 't', 'y'], '7': ['6', '8', 'y', 'u'], '8': ['7', '9', 'u', 'i'],
+    '9': ['8', '0', 'i', 'o'], '0': ['9', '-', 'o', 'p'],
+    ' ': [' '], // space typo: double-space, handled separately
   };
 
   // Common transposition pairs (swap adjacent characters: 'teh' -> 'the')
   const COMMON_SWAPS = [
-    ['t','h'],['h','t'],['i','e'],['e','i'],['a','n'],['n','a'],
-    ['o','r'],['r','o'],['s','t'],['t','s'],['n','g'],['g','n'],
+    ['t', 'h'], ['h', 't'], ['i', 'e'], ['e', 'i'], ['a', 'n'], ['n', 'a'],
+    ['o', 'r'], ['r', 'o'], ['s', 't'], ['t', 's'], ['n', 'g'], ['g', 'n'],
   ];
 
   function getAdjacentKey(ch) {
@@ -693,7 +693,7 @@
           const editor = window.ace.edit(aceEl.id || aceEl);
           editor.remove('left');
           return;
-        } catch {}
+        } catch { }
       }
     }
 
@@ -703,7 +703,7 @@
         const ta = monacoEl.querySelector('textarea.inputarea') || monacoEl.querySelector('textarea');
         if (ta) {
           ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
-          ta.dispatchEvent(new KeyboardEvent('keyup',   { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
+          ta.dispatchEvent(new KeyboardEvent('keyup', { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
           return;
         }
       }
@@ -720,19 +720,19 @@
 
     // Native input / textarea
     const start = el.selectionStart ?? el.value.length;
-    const end   = el.selectionEnd   ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
     if (start > 0) {
       const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value') ||
-                           Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
+        Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
       const deletePos = start === end ? start - 1 : start;
-      const newValue  = el.value.substring(0, deletePos) + el.value.substring(end);
+      const newValue = el.value.substring(0, deletePos) + el.value.substring(end);
       if (nativeSetter && nativeSetter.set) {
         nativeSetter.set.call(el, newValue);
       } else {
         el.value = newValue;
       }
       el.selectionStart = el.selectionEnd = deletePos;
-      el.dispatchEvent(new Event('input',  { bubbles: true, cancelable: false }));
+      el.dispatchEvent(new Event('input', { bubbles: true, cancelable: false }));
       el.dispatchEvent(new Event('change', { bubbles: true, cancelable: false }));
     }
   }
@@ -775,8 +775,8 @@
     if (typingState.abortController) {
       typingState.abortController.abort();
     }
-    typingState.active  = false;
-    typingState.paused  = false;
+    typingState.active = false;
+    typingState.paused = false;
     if (typingState.pauseResolve) {
       typingState.pauseResolve();
       typingState.pauseResolve = null;
@@ -819,8 +819,8 @@
 
       case 'getStatus':
         sendResponse({
-          status:     typingState.active ? (typingState.paused ? 'paused' : 'typing') : 'idle',
-          charIndex:  typingState.charIndex,
+          status: typingState.active ? (typingState.paused ? 'paused' : 'typing') : 'idle',
+          charIndex: typingState.charIndex,
           totalChars: typingState.totalChars,
         });
         break;
