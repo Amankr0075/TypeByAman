@@ -60,28 +60,151 @@
     });
   }
 
-  // ─── Target Element Detection ───────────────────────────────────────────────
+  // ─── Live Cursor & Target Field Tracking ────────────────────────────────────
+
+  let lastInteractedElement = null;
+
+  function resolveTargetElement(el) {
+    if (!el || el === document || el === document.documentElement || el === pickOverlay) {
+      return null;
+    }
+
+    // 1. Direct standard textarea
+    if (el.tagName === 'TEXTAREA') return el;
+
+    // 2. Direct standard text input
+    if (el.tagName === 'INPUT') {
+      const type = (el.type || 'text').toLowerCase();
+      const nonTextTypes = ['button', 'submit', 'reset', 'checkbox', 'radio', 'hidden', 'image', 'file', 'range', 'color'];
+      if (!nonTextTypes.includes(type)) return el;
+    }
+
+    // 3. Direct or parent contenteditable / role="textbox"
+    if (el.isContentEditable) {
+      return el.closest('[contenteditable="true"], [contenteditable=""]') || el;
+    }
+    const roleTextbox = el.closest('[role="textbox"]');
+    if (roleTextbox) return roleTextbox;
+
+    // 4. Code Editors: Monaco, CodeMirror, Ace
+    const monaco = el.closest('.monaco-editor');
+    if (monaco) {
+      return monaco.querySelector('textarea.inputarea, textarea') || monaco;
+    }
+    const cm = el.closest('.CodeMirror, .cm-editor');
+    if (cm) {
+      return cm.querySelector('textarea, [contenteditable="true"]') || cm;
+    }
+    const ace = el.closest('.ace_editor');
+    if (ace) {
+      return ace.querySelector('textarea.ace_text-input, textarea') || ace;
+    }
+
+    // 5. Rich text editors (Quill, CKEditor, TinyMCE, ProseMirror, Lexical, Draft, Slate)
+    const richEditor = el.closest('.ql-editor, .ck-editor__editable, .tox-edit-area, .ProseMirror, [data-lexical-editor], [data-slate-editor], [contenteditable]');
+    if (richEditor) return richEditor;
+
+    // 6. Labels with associated controls
+    if (el.tagName === 'LABEL') {
+      if (el.control) {
+        const res = resolveTargetElement(el.control);
+        if (res) return res;
+      }
+      const innerInput = el.querySelector('textarea, input, [contenteditable="true"]');
+      if (innerInput) {
+        const res = resolveTargetElement(innerInput);
+        if (res) return res;
+      }
+    }
+
+    // 7. Clicked on a wrapper or container surrounding an input/textarea
+    const childInput = el.querySelector('textarea, input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]), [contenteditable="true"], [role="textbox"]');
+    if (childInput) {
+      const res = resolveTargetElement(childInput);
+      if (res) return res;
+    }
+
+    // 8. Active element inside container
+    if (document.activeElement && document.activeElement !== document.body && el.contains(document.activeElement)) {
+      const activeRes = resolveTargetElement(document.activeElement);
+      if (activeRes) return activeRes;
+    }
+
+    // 9. Attribute contenteditable
+    if (el.getAttribute && el.getAttribute('contenteditable') !== null && el.getAttribute('contenteditable') !== 'false') {
+      return el;
+    }
+
+    return null;
+  }
+
+  function trackCursorPosition(target) {
+    if (!target || target === pickOverlay || target === document || target === document.documentElement) return;
+    const resolved = resolveTargetElement(target);
+    if (resolved) {
+      lastInteractedElement = resolved;
+      typingState.targetElement = resolved;
+    }
+  }
+
+  // Continuously track wherever the user clicks or places cursor
+  document.addEventListener('focusin', e => trackCursorPosition(e.target), true);
+  document.addEventListener('pointerdown', e => trackCursorPosition(e.target), true);
+  document.addEventListener('click', e => trackCursorPosition(e.target), true);
+  document.addEventListener('keyup', e => trackCursorPosition(e.target), true);
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (sel && sel.focusNode) {
+      const node = sel.focusNode.nodeType === 1 ? sel.focusNode : sel.focusNode.parentElement;
+      trackCursorPosition(node);
+    }
+  }, true);
+
+  function findFocusedOrLastInput() {
+    // 1. Current active element on the page
+    if (document.activeElement && document.activeElement !== document.body && document.activeElement !== document.documentElement) {
+      const res = resolveTargetElement(document.activeElement);
+      if (res) return res;
+    }
+
+    // 2. Last element user interacted with or focused
+    if (lastInteractedElement && document.contains(lastInteractedElement)) {
+      return lastInteractedElement;
+    }
+
+    // 3. Current text selection / cursor location
+    const sel = window.getSelection();
+    if (sel && sel.focusNode) {
+      const node = sel.focusNode.nodeType === 1 ? sel.focusNode : sel.focusNode.parentElement;
+      const res = resolveTargetElement(node);
+      if (res) return res;
+    }
+
+    // 4. Any visible input, textarea or editor on the active page
+    const candidates = document.querySelectorAll(
+      'textarea, input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]), [contenteditable="true"], [role="textbox"], .monaco-editor textarea, .CodeMirror textarea, .cm-editor [contenteditable="true"], .ace_editor textarea'
+    );
+    for (const c of candidates) {
+      const rect = c.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && window.getComputedStyle(c).visibility !== 'hidden' && window.getComputedStyle(c).display !== 'none') {
+        const res = resolveTargetElement(c);
+        if (res) return res;
+      }
+    }
+
+    return null;
+  }
 
   function isTypeable(el) {
-    if (!el) return false;
-    const tag = el.tagName.toLowerCase();
-    if (tag === 'textarea') return true;
-    if (tag === 'input') {
-      const t = (el.type || 'text').toLowerCase();
-      return ['text', 'search', 'url', 'email', 'password', 'number', 'tel'].includes(t);
-    }
-    if (el.isContentEditable) return true;
-    // CodeMirror / Monaco / Ace editor detection
-    if (el.closest('.CodeMirror') || el.closest('.monaco-editor') || el.closest('.ace_editor')) return true;
-    return false;
+    return !!resolveTargetElement(el);
   }
 
   function getEditorType(el) {
     if (!el) return 'unknown';
     if (el.closest('.monaco-editor')) return 'monaco';
-    if (el.closest('.CodeMirror'))    return 'codemirror';
+    if (el.closest('.CodeMirror') || el.closest('.cm-editor')) return 'codemirror';
     if (el.closest('.ace_editor'))    return 'ace';
-    if (el.isContentEditable)         return 'contenteditable';
+    if (el.isContentEditable || el.closest('[contenteditable="true"]')) return 'contenteditable';
     if (el.tagName.toLowerCase() === 'textarea') return 'textarea';
     return 'input';
   }
@@ -90,10 +213,12 @@
     if (!el) return '';
     const tag   = el.tagName.toLowerCase();
     const id    = el.id ? `#${el.id}` : '';
+    const name  = el.name ? `[name="${el.name}"]` : '';
+    const placeholder = el.placeholder ? `[${el.placeholder.substring(0, 15)}]` : '';
     const cls   = el.className && typeof el.className === 'string'
-      ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
+      ? '.' + el.className.trim().split(/\s+/).slice(0, 1).join('.') : '';
     const type  = el.type ? `[${el.type}]` : '';
-    return `${tag}${type}${id || cls}`.substring(0, 50);
+    return `${tag}${type}${id || name || placeholder || cls}`.substring(0, 45);
   }
 
   // ─── Target Picking ─────────────────────────────────────────────────────────
@@ -102,7 +227,6 @@
     if (isPicking) return;
     isPicking = true;
 
-    // Overlay cursor style
     pickOverlay = document.createElement('div');
     pickOverlay.style.cssText = `
       position: fixed; inset: 0; z-index: 2147483646;
@@ -117,32 +241,40 @@
   }
 
   function onPickMove(e) {
+    if (!pickOverlay) return;
     pickOverlay.style.pointerEvents = 'none';
     const el = document.elementFromPoint(e.clientX, e.clientY);
     pickOverlay.style.pointerEvents = 'all';
 
-    if (el && el !== highlightedEl) {
+    const target = resolveTargetElement(el) || el;
+    if (target && target !== highlightedEl && target !== pickOverlay) {
       removeHighlight();
-      if (isTypeable(el)) {
-        highlightedEl = el;
-        addHighlight(el);
-      }
+      highlightedEl = target;
+      addHighlight(target);
     }
   }
 
   function onPickClick(e) {
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
+    if (!pickOverlay) return;
+
     pickOverlay.style.pointerEvents = 'none';
-    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const rawEl = document.elementFromPoint(e.clientX, e.clientY);
     pickOverlay.style.pointerEvents = 'all';
 
-    if (el && isTypeable(el)) {
-      typingState.targetElement = el;
-      const label = getElementLabel(el);
+    const target = resolveTargetElement(rawEl) || rawEl;
+
+    if (target) {
+      typingState.targetElement = target;
+      lastInteractedElement = target;
+      try { target.focus(); } catch {}
+      const label = getElementLabel(target);
       stopPicking();
+      showFeedback(`Target Selected: ${label}`, 'success');
       chrome.runtime.sendMessage({ action: 'targetPicked', label });
     } else {
-      showFeedback('That element is not a supported input. Try a text field or editor.', 'warning');
+      showFeedback('Click any text area, input, or code editor.', 'warning');
     }
   }
 
@@ -185,17 +317,15 @@
   // ─── Typing Engine ──────────────────────────────────────────────────────────
 
   async function startTyping(config) {
-    // If already typing, stop first
     if (typingState.active) {
       abortTyping();
       await sleep(50);
     }
 
     const { text, delay, linebreakDelay, startDelay } = config;
-
     if (!text) return { error: 'No text provided' };
 
-    // Find target: use pinned target or last focused input/textarea
+    // Find target: use pinned target, last interacted, active element, or auto-detect
     let target = typingState.targetElement;
     if (!target || !document.contains(target)) {
       target = findFocusedOrLastInput();
@@ -203,7 +333,7 @@
     }
 
     if (!target) {
-      return { error: 'No target field selected. Click "Pick Target Field" first.' };
+      return { error: 'No text field or cursor detected. Click into an input or editor first.' };
     }
 
     const ac = new AbortController();
@@ -220,27 +350,23 @@
       abortSignal:    ac.signal,
     };
 
-    // Run async
     runTypingLoop(target, text, startDelay, ac.signal).catch(() => {});
-
-    return { ok: true };
+    return { ok: true, label: getElementLabel(target) };
   }
 
   async function runTypingLoop(el, text, startDelay, signal) {
     try {
       if (startDelay > 0) await sleep(startDelay, signal);
 
-      el.focus();
+      try { el.focus(); } catch {}
 
-      // Clear existing content if empty start
+      // If Monaco editor, focus the inputarea textarea
       if (getEditorType(el) === 'monaco') {
-        // Monaco: use keyboard shortcuts to select all then type
-        clearMonaco(el);
-      } else if (el.isContentEditable) {
-        // Don't clear contenteditable automatically
-      } else {
-        el.value = '';
-        el.selectionStart = el.selectionEnd = 0;
+        const monacoEl = el.closest('.monaco-editor');
+        if (monacoEl) {
+          const ta = monacoEl.querySelector('textarea.inputarea') || monacoEl.querySelector('textarea');
+          if (ta) ta.focus();
+        }
       }
 
       for (let i = 0; i < text.length; i++) {
