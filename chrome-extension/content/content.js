@@ -373,6 +373,9 @@
         }
       }
 
+      let lastTypoTime = Date.now();
+      let nextTypoInterval = 8000 + Math.random() * 4000; // ~10 seconds for first typo
+
       for (let i = 0; i < text.length; i++) {
         if (signal.aborted) break;
 
@@ -382,15 +385,22 @@
         const ch = text[i];
         typingState.charIndex = i;
 
-        // ── Human-like Typo Simulation ──────────────────────────────────────
-        if (shouldMakeTypo(ch, typingState.humanTypoMode, typingState.typoRate)) {
+        // ── Human-like Typo Simulation (every ~10 seconds) ───────────────────
+        const now = Date.now();
+        const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
+
+        if (typingState.humanTypoMode && isEligibleForTypo && (now - lastTypoTime) >= nextTypoInterval) {
           const typoMade = await performTypoAndCorrect(el, ch, signal);
           if (signal.aborted) break;
 
           if (typoMade) {
-            // Occasionally type 1 more char before noticing the error (30% chance)
+            // Reset timer and schedule next typo for ~10 seconds later (9s - 12s)
+            lastTypoTime = Date.now();
+            nextTypoInterval = 9000 + Math.random() * 3000;
+
+            // In ~40% of cases, human typed 1 more character before realizing mistake
             let bonusChar = null;
-            if (i + 1 < text.length && Math.random() < 0.3) {
+            if (i + 1 < text.length && Math.random() < 0.4 && /[a-zA-Z0-9]/.test(text[i + 1])) {
               bonusChar = text[i + 1];
               await typeCharacter(el, bonusChar, signal);
               const bonusDelay = typingState.delay + Math.floor(Math.random() * typingState.delay * 0.5);
@@ -398,34 +408,39 @@
               if (signal.aborted) break;
             }
 
-            // Delete the bonus char first (if typed)
+            // Realization pause: 200–350ms (human notices the error on screen)
+            const noticePause = 200 + Math.floor(Math.random() * 150);
+            await sleep(noticePause, signal);
+            if (signal.aborted) break;
+
+            // Backspace delete bonus char if typed
             if (bonusChar !== null) {
               await deleteCharacter(el, signal);
-              await sleep(60 + Math.floor(Math.random() * 60), signal);
+              await sleep(70 + Math.floor(Math.random() * 50), signal);
               if (signal.aborted) break;
             }
 
-            // Delete the wrong char
+            // Backspace delete the typo char
             await deleteCharacter(el, signal);
 
-            // Brief pause before retyping (cognitive 'recovery' moment)
-            await sleep(80 + Math.floor(Math.random() * 120), signal);
+            // Brief pause before retyping (human cognitive recovery: 120–200ms)
+            await sleep(120 + Math.floor(Math.random() * 80), signal);
             if (signal.aborted) break;
 
             // Retype the correct character
             await typeCharacter(el, ch, signal);
 
-            // Slight extra delay after error recovery feels natural
-            const recoverDelay = typingState.delay + Math.floor(Math.random() * typingState.delay);
+            // Slight natural pause after fixing mistake
+            const recoverDelay = typingState.delay + Math.floor(Math.random() * 60);
             await sleep(recoverDelay, signal);
             if (signal.aborted) break;
 
             // Update progress normally
-            if (i % 50 === 0 || i === text.length - 1) {
+            if (i % 25 === 0 || i === text.length - 1) {
               chrome.runtime.sendMessage({
                 action: 'statusUpdate', status: 'typing',
                 charIndex: i + 1, totalChars: text.length,
-              });
+              }).catch(() => {});
             }
             continue; // move to next character
           }
@@ -738,22 +753,13 @@
   }
 
   async function performTypoAndCorrect(el, correctChar, signal) {
-    // 1. Pick a wrong key (adjacent on QWERTY keyboard)
+    // Pick an adjacent typo key on standard QWERTY layout
     const wrongChar = getAdjacentKey(correctChar);
-    if (!wrongChar || wrongChar === correctChar) return false; // no suitable wrong key, skip typo
+    if (!wrongChar || wrongChar === correctChar) return false;
 
-    // 2. Type the wrong character
+    // Type the mistake character
     await typeCharacter(el, wrongChar, signal);
-
-    // 3. Human reaction delay: time to notice the mistake visually (150–400 ms)
-    const reactionMs = 150 + Math.floor(Math.random() * 250);
-    await sleep(reactionMs, signal);
-
-    if (signal.aborted) return true;
-
-    // 4. Occasionally type 1–2 more chars before noticing (makes it more realistic)
-    // Only do this ~30% of the time
-    return true; // typo was performed, need correction
+    return true;
   }
 
   // ─── Abort / Stop ───────────────────────────────────────────────────────────

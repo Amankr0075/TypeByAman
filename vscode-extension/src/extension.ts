@@ -34,6 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
     ['typebyaman.restart',       cmdRestart],
     ['typebyaman.configureSpeed',cmdConfigureSpeed],
     ['typebyaman.openPanel',     () => TypeByAmanPanel.createOrShow(context.extensionUri, onPanelCommand)],
+    ['typebyaman.share',         cmdShare],
   ];
 
   for (const [cmd, handler] of commands) {
@@ -73,6 +74,7 @@ function onPanelCommand(msg: { command: string; payload?: unknown }) {
     case 'restart':        cmdRestart();        break;
     case 'updateDelay':    engine?.updateDelay((msg.payload as { delay: number }).delay); break;
     case 'configureSpeed': cmdConfigureSpeed(); break;
+    case 'share':          cmdShare();          break;
   }
 }
 
@@ -314,6 +316,39 @@ async function cmdConfigureSpeed() {
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
+
+async function cmdShare(): Promise<void> {
+  const shareText = `🚀 TypeByAman — The Ultimate Human-Like Typing & Code Replay Tool
+Created by Aman Kumar | https://github.com/Amankr0075/TypeByAman
+
+Replay source code and text character-by-character with natural human typing variations, automatic typo self-correction, and full editor support.
+
+📦 Setup Instructions:
+
+🌐 Chrome Extension:
+1. Download or clone: https://github.com/Amankr0075/TypeByAman
+2. Open Chrome and navigate to: chrome://extensions/
+3. Turn ON "Developer mode" in the top-right corner
+4. Click "Load unpacked" and select the "chrome-extension" folder
+5. Shortcut: Press Alt+Shift+S in any input or editor to start typing!
+
+💻 VS Code Extension:
+1. Search "TypeByAman" in the VS Code Marketplace, OR install the VSIX from:
+   https://github.com/Amankr0075/TypeByAman/releases
+2. Press Alt+Shift+S to start typing or Alt+Shift+T for the Control Panel
+
+⭐ GitHub Repository & Documentation:
+https://github.com/Amankr0075/TypeByAman`;
+
+  await vscode.env.clipboard.writeText(shareText);
+  const action = await vscode.window.showInformationMessage(
+    'TypeByAman: Share link & setup instructions copied to clipboard!',
+    'Open GitHub Repo'
+  );
+  if (action === 'Open GitHub Repo') {
+    vscode.env.openExternal(vscode.Uri.parse('https://github.com/Amankr0075/TypeByAman'));
+  }
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise(r => setTimeout(r, ms));

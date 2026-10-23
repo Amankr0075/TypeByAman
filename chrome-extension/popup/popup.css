@@ -971,6 +971,37 @@ kbd {
   background: rgba(79,142,247,0.08);
 }
 
+.about-share-container {
+  margin-bottom: 8px;
+}
+
+.share-full-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(79, 142, 247, 0.15), rgba(168, 85, 247, 0.15));
+  border: 1px solid rgba(79, 142, 247, 0.4);
+  color: #93c5fd;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.share-full-btn:hover {
+  background: var(--gradient-main);
+  border-color: transparent;
+  color: #fff;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.4);
+}
+
 /* ---------- Animations ---------- */
 @keyframes shimmer {
   0% { background-position: -400px 0; }

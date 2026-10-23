@@ -46,6 +46,11 @@ class StatusBarManager {
         this.item.tooltip = 'TypeByAman — Click to open control panel';
         this.setIdle();
         this.item.show();
+        this.shareItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+        this.shareItem.command = 'typebyaman.share';
+        this.shareItem.text = '$(share) Share';
+        this.shareItem.tooltip = 'Share TypeByAman & Setup Instructions';
+        this.shareItem.show();
     }
     update(status, charIndex, totalChars, delay) {
         const pct = totalChars > 0 ? Math.round((charIndex / totalChars) * 100) : 0;
@@ -81,6 +86,7 @@ class StatusBarManager {
     }
     dispose() {
         this.item.dispose();
+        this.shareItem.dispose();
     }
 }
 exports.StatusBarManager = StatusBarManager;

@@ -58,6 +58,12 @@
         "command": "typebyaman.openPanel",
         "title": "TypeByAman: Open Control Panel",
         "category": "TypeByAman"
+      },
+      {
+        "command": "typebyaman.share",
+        "title": "TypeByAman: Share Extension & Setup Guide",
+        "category": "TypeByAman",
+        "icon": "$(share)"
       }
     ],
     "keybindings": [

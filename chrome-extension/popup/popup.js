@@ -83,6 +83,8 @@ const els = {
   btnOpenOptions: $('btn-open-options'),
   statusVisualizer: $('status-visualizer'),
   creatorLink: $('creator-link'),
+  btnShare: $('btn-share'),
+  btnAboutShare: $('btn-about-share'),
 };
 
 // ─── Initialization ──────────────────────────────────────────────────────────
@@ -513,6 +515,57 @@ function bindEvents() {
       e.preventDefault();
       chrome.tabs.create({ url: 'https://github.com/Amankr0075/TypeByAman' });
     });
+  }
+
+  // Share Extension & Setup Guide
+  const shareHandler = async () => {
+    const shareText = `🚀 TypeByAman — The Ultimate Human-Like Typing & Code Replay Tool
+Created by Aman Kumar | https://github.com/Amankr0075/TypeByAman
+
+Replay source code and text character-by-character with natural human typing variations, automatic typo self-correction, and full editor support.
+
+📦 Setup Instructions:
+
+🌐 Chrome Extension:
+1. Download or clone: https://github.com/Amankr0075/TypeByAman
+2. Open Chrome and navigate to: chrome://extensions/
+3. Turn ON "Developer mode" in the top-right corner
+4. Click "Load unpacked" and select the "chrome-extension" folder
+5. Shortcut: Press Alt+Shift+S in any input or editor to start typing!
+
+💻 VS Code Extension:
+1. Search "TypeByAman" in the VS Code Marketplace, OR install the VSIX from:
+   https://github.com/Amankr0075/TypeByAman/releases
+2. Press Alt+Shift+S to start typing or Alt+Shift+T for the Control Panel
+
+⭐ GitHub Repository & Documentation:
+https://github.com/Amankr0075/TypeByAman`;
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showMessage('✓ Copied repo link & setup instructions to clipboard!', 'success', 4000);
+    } catch {
+      showMessage('Share repo: https://github.com/Amankr0075/TypeByAman', 'info', 4000);
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'TypeByAman — Human-Like Typing & Code Replay Tool',
+          text: shareText,
+          url: 'https://github.com/Amankr0075/TypeByAman',
+        });
+      } catch {
+        // Ignored if user dismissed native share sheet
+      }
+    }
+  };
+
+  if (els.btnShare) {
+    els.btnShare.addEventListener('click', shareHandler);
+  }
+  if (els.btnAboutShare) {
+    els.btnAboutShare.addEventListener('click', shareHandler);
   }
 
   // Intercept all .about-link clicks to open in new tab safely

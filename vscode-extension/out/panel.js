@@ -257,6 +257,13 @@ class TypeByAmanPanel {
         <span class="brand-tag">Type. Replay. Create.</span>
       </div>
     </div>
+    <button class="mbtn" id="btn-share-panel" title="Share TypeByAman & Setup Instructions" style="font-size:11px;padding:4px 8px;gap:5px;display:flex;align-items:center">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+      Share
+    </button>
   </div>
 
   <!-- Tabs -->
@@ -396,10 +403,20 @@ class TypeByAmanPanel {
       <div class="adiv"></div>
       <div class="about-row"><span class="akey">Created by</span><span class="aval">Aman Kumar</span></div>
       <div class="about-row"><span class="akey">GitHub</span><a class="alink" href="https://github.com/Amankr0075" target="_blank" rel="noopener">github.com/Amankr0075</a></div>
+      <div class="about-row"><span class="akey">Repository</span><a class="alink" href="https://github.com/Amankr0075/TypeByAman" target="_blank" rel="noopener">github.com/Amankr0075/TypeByAman</a></div>
       <div class="about-row"><span class="akey">Privacy</span><span class="aval">All data stays local — no servers, no tracking</span></div>
       <div class="about-row"><span class="akey">License</span><span class="aval">MIT — Free to use &amp; modify</span></div>
       <div class="adiv"></div>
       <div class="aval" style="font-size:11px;color:var(--t2);text-align:left">TypeByAman is a local typing/replay utility that gradually reproduces text or source code in your VS Code editor — perfect for coding demos, tutorials, and screen recordings.</div>
+      <div style="margin-top:14px">
+        <button class="cb prim" id="btn-about-share" style="width:100%;padding:8px;font-size:11px;gap:6px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share TypeByAman &amp; Setup Guide
+        </button>
+      </div>
     </div>
   </div>
 
@@ -527,6 +544,9 @@ class TypeByAmanPanel {
           startDelay:parseInt(els.stDelay.value)||0
         }});
       });
+
+      $('btn-share-panel')?.addEventListener('click', () => vscode.postMessage({ command: 'share' }));
+      $('btn-about-share')?.addEventListener('click', () => vscode.postMessage({ command: 'share' }));
 
       // Receive messages from extension
       window.addEventListener('message', e => {

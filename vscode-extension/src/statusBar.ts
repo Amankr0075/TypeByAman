@@ -9,6 +9,7 @@ type Status = 'idle' | 'typing' | 'paused' | 'done' | 'error';
 
 export class StatusBarManager implements vscode.Disposable {
   private item: vscode.StatusBarItem;
+  private shareItem: vscode.StatusBarItem;
 
   constructor() {
     this.item = vscode.window.createStatusBarItem(
@@ -19,6 +20,15 @@ export class StatusBarManager implements vscode.Disposable {
     this.item.tooltip = 'TypeByAman — Click to open control panel';
     this.setIdle();
     this.item.show();
+
+    this.shareItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      99
+    );
+    this.shareItem.command = 'typebyaman.share';
+    this.shareItem.text = '$(share) Share';
+    this.shareItem.tooltip = 'Share TypeByAman & Setup Instructions';
+    this.shareItem.show();
   }
 
   update(
@@ -67,5 +77,6 @@ export class StatusBarManager implements vscode.Disposable {
 
   dispose(): void {
     this.item.dispose();
+    this.shareItem.dispose();
   }
 }
