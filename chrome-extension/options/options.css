@@ -318,6 +318,8 @@ kbd {
 .ad-val { font-size: 13px; color: var(--t2); line-height: 1.5; }
 .ad-link { font-size: 13px; color: var(--blue); text-decoration: none; }
 .ad-link:hover { text-decoration: underline; color: var(--purple); }
+.ad-link.repo-highlight { font-weight: 600; }
+.ad-link.repo-highlight:hover { text-decoration: underline; color: var(--purple); }
 
 .about-desc-text { max-width: 500px; text-align: left; }
 .about-desc-text p { font-size: 13px; color: var(--t2); line-height: 1.7; }

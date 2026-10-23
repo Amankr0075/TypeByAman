@@ -81,6 +81,8 @@ const els = {
   messageArea: $('message-area'),
   messageContent: $('message-content'),
   btnOpenOptions: $('btn-open-options'),
+  statusVisualizer: $('status-visualizer'),
+  creatorLink: $('creator-link'),
 };
 
 // ─── Initialization ──────────────────────────────────────────────────────────
@@ -243,6 +245,12 @@ function updateUI() {
   els.btnResume.disabled = !isPaused;
   els.btnStop.disabled = isIdle;
   els.btnRestart.disabled = isIdle && charIndex === 0;
+
+  // Live visualizer and body typing glow
+  if (els.statusVisualizer) {
+    els.statusVisualizer.classList.toggle('active', isTyping);
+  }
+  els.body.classList.toggle('is-typing', isTyping);
 }
 
 // ─── Character Count ─────────────────────────────────────────────────────────
@@ -498,6 +506,23 @@ function bindEvents() {
       window.close();
     });
   }
+
+  // Creator GitHub repo link
+  if (els.creatorLink) {
+    els.creatorLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: 'https://github.com/Amankr0075/TypeByAman' });
+    });
+  }
+
+  // Intercept all .about-link clicks to open in new tab safely
+  document.querySelectorAll('.about-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const href = link.getAttribute('href');
+      if (href) chrome.tabs.create({ url: href });
+    });
+  });
 
   // Messages from content script
   chrome.runtime.onMessage.addListener((msg) => {
