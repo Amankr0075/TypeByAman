@@ -11,7 +11,7 @@
 *A premium local typing/replay utility — 100% free, unlimited use, no account required.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen.svg)](https://amankr0075.github.io/typebyaman/)
+[![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen.svg)](https://amankr0075.github.io/TypeByAman/)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)](chrome-extension/)
 [![VS Code Extension](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](vscode-extension/)
 [![Author](https://img.shields.io/badge/Author-Aman%20Kumar-purple.svg)](https://github.com/Amankr0075)
