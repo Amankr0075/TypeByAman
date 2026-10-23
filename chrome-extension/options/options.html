@@ -256,36 +256,34 @@
       <section id="shortcuts" class="settings-section">
         <div class="section-header">
           <h2 class="section-title">Keyboard Shortcuts</h2>
-          <p class="section-desc">Default keyboard shortcuts for TypeByAman. Change them in Chrome's extension shortcuts settings.</p>
+          <p class="section-desc">Your current shortcuts are shown below. Click <strong>Edit in Chrome</strong> to customize them — Chrome manages extension shortcuts natively.</p>
         </div>
         <div class="settings-grid">
           <div class="setting-card">
-            <div class="shortcut-table">
-              <div class="shortcut-row">
-                <span class="shortcut-action">Start Typing</span>
-                <div class="shortcut-keys">
-                  <kbd>Alt</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>S</kbd>
-                </div>
-              </div>
-              <div class="shortcut-row">
-                <span class="shortcut-action">Pause / Resume</span>
-                <div class="shortcut-keys">
-                  <kbd>Alt</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>P</kbd>
-                </div>
-              </div>
-              <div class="shortcut-row">
-                <span class="shortcut-action">Stop Typing</span>
-                <div class="shortcut-keys">
-                  <kbd>Alt</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>X</kbd>
-                </div>
-              </div>
+
+            <!-- Live shortcut list populated by JS -->
+            <div class="shortcut-table" id="shortcut-table">
+              <!-- Injected by options.js -->
+              <div class="shortcut-loading">Loading shortcuts…</div>
             </div>
-            <a class="link-btn" href="chrome://extensions/shortcuts" target="_blank" rel="noopener">
-              Customize shortcuts in Chrome →
-            </a>
+
+            <div class="shortcut-footer">
+              <button class="shortcut-edit-btn" id="btn-edit-shortcuts">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit in Chrome
+              </button>
+              <p class="shortcut-hint">
+                Chrome → Extensions → <kbd class="hint-kbd">⋮</kbd> Menu → <strong>Keyboard shortcuts</strong><br>
+                or go to <code class="hint-url">chrome://extensions/shortcuts</code>
+              </p>
+            </div>
           </div>
         </div>
       </section>
+
 
       <!-- About -->
       <section id="about" class="settings-section">

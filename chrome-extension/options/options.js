@@ -38,6 +38,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindBehaviorSection();
   bindAppearanceSection();
   bindSave();
+  await loadShortcuts();       // load live shortcut bindings
+  bindShortcutsSection();      // wire Edit button
 });
 
 // ─── Load / Save ─────────────────────────────────────────────────────────────
@@ -191,4 +193,84 @@ function bindAppearanceSection() {
 function bindSave() {
   $('btn-save-all').addEventListener('click', saveSettings);
   $('btn-reset').addEventListener('click', resetSettings);
+}
+
+// ─── Keyboard Shortcuts (Live) ───────────────────────────────────────────────────
+
+// Human-readable labels for each command name defined in manifest.json
+const COMMAND_LABELS = {
+  'start-typing':          'Start Typing',
+  'pause-resume-typing':   'Pause / Resume',
+  'stop-typing':           'Stop Typing',
+  '_execute_action':       'Open Popup',   // built-in Chrome command
+};
+
+async function loadShortcuts() {
+  const table = $('shortcut-table');
+  if (!table) return;
+
+  let commands = [];
+  try {
+    commands = await chrome.commands.getAll();
+  } catch {
+    table.innerHTML = '<div class="shortcut-loading">Could not load shortcuts.</div>';
+    return;
+  }
+
+  // Filter to commands we care about (skip _execute_action if shortcut is empty)
+  const relevant = commands.filter(c => COMMAND_LABELS[c.name]);
+  if (!relevant.length) {
+    table.innerHTML = '<div class="shortcut-loading">No shortcuts configured.</div>';
+    return;
+  }
+
+  table.innerHTML = relevant.map(cmd => {
+    const label    = COMMAND_LABELS[cmd.name] || cmd.name;
+    const shortcut = cmd.shortcut || '';
+    const keysHtml = shortcut
+      ? formatShortcut(shortcut)
+      : '<span class="not-set">Not set</span>';
+    return `
+      <div class="shortcut-row">
+        <span class="shortcut-action">${label}</span>
+        <div class="shortcut-keys">${keysHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+/**
+ * Converts a Chrome shortcut string like "Ctrl+Shift+S" into
+ * a series of styled <kbd> elements joined by + separators.
+ */
+function formatShortcut(shortcut) {
+  return shortcut
+    .split('+')
+    .map((part, i, arr) => {
+      const key = part.trim();
+      const kbd = `<kbd>${key}</kbd>`;
+      return i < arr.length - 1 ? kbd + '<span>+</span>' : kbd;
+    })
+    .join('');
+}
+
+function bindShortcutsSection() {
+  const btn = $('btn-edit-shortcuts');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    // Chrome extensions cannot navigate to chrome:// URLs via href.
+    // chrome.tabs.create works here because options pages have the
+    // `tabs` permission implicitly via `openOptionsPage`.
+    try {
+      await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    } catch {
+      // Fallback: copy URL to clipboard and show a toast
+      try {
+        await navigator.clipboard.writeText('chrome://extensions/shortcuts');
+        showToast('URL copied! Paste it in a new Chrome tab: chrome://extensions/shortcuts');
+      } catch {
+        showToast('Open a new tab and go to: chrome://extensions/shortcuts');
+      }
+    }
+  });
 }
