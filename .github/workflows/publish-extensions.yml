@@ -1,0 +1,116 @@
+name: Publish Extensions on Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish_vscode:
+        description: 'Publish VS Code Extension to Marketplace'
+        required: true
+        default: 'true'
+        type: boolean
+      publish_chrome:
+        description: 'Publish Chrome Extension to Web Store'
+        required: true
+        default: 'true'
+        type: boolean
+
+jobs:
+  # ─── VS Code Extension ──────────────────────────────────────────────────────
+  publish-vscode:
+    name: Build & Publish VS Code Extension
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event.inputs.publish_vscode == 'true'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        working-directory: ./vscode-extension
+        run: npm ci
+
+      - name: Compile TypeScript
+        working-directory: ./vscode-extension
+        run: npm run compile
+
+      - name: Package VSIX
+        working-directory: ./vscode-extension
+        run: npx vsce package --no-dependencies
+
+      - name: Upload VSIX as GitHub Release Asset
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: vscode-extension/*.vsix
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to VS Code Marketplace
+        working-directory: ./vscode-extension
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -n "$VSCE_PAT" ]; then
+            npx vsce publish --no-dependencies --pat "$VSCE_PAT"
+            echo "Published to VS Code Marketplace"
+          else
+            echo "VSCE_PAT secret not set. Skipping marketplace publish."
+            echo "Add VSCE_PAT to GitHub repository secrets to enable auto-publish."
+          fi
+
+  # ─── Chrome Extension ───────────────────────────────────────────────────────
+  publish-chrome:
+    name: Build & Publish Chrome Extension
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event.inputs.publish_chrome == 'true'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Package Chrome Extension as ZIP
+        run: |
+          mkdir -p dist
+          cd chrome-extension
+          zip -r ../dist/typebyaman-chrome-extension.zip . \
+            -x "node_modules/*" \
+            -x "package-lock.json" \
+            -x "generate-icons.js" \
+            -x "create-placeholder-icons.js" \
+            -x "*.md"
+
+      - name: Upload Chrome ZIP as GitHub Release Asset
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/typebyaman-chrome-extension.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Chrome Web Store
+        env:
+          CHROME_CLIENT_ID:     ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_EXTENSION_ID:  ${{ secrets.CHROME_EXTENSION_ID }}
+        run: |
+          if [ -n "$CHROME_CLIENT_ID" ] && [ -n "$CHROME_EXTENSION_ID" ]; then
+            npm install -g chrome-webstore-upload-cli
+            chrome-webstore-upload upload \
+              --source dist/typebyaman-chrome-extension.zip \
+              --extension-id "$CHROME_EXTENSION_ID" \
+              --client-id     "$CHROME_CLIENT_ID" \
+              --client-secret "$CHROME_CLIENT_SECRET" \
+              --refresh-token "$CHROME_REFRESH_TOKEN" \
+              --auto-publish
+            echo "Published to Chrome Web Store"
+          else
+            echo "Chrome Web Store secrets not set. Skipping Chrome publish."
+          fi
