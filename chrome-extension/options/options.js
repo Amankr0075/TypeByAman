@@ -231,11 +231,19 @@ async function loadShortcuts() {
       ? formatShortcut(shortcut)
       : '<span class="not-set">Not set</span>';
     return `
-      <div class="shortcut-row">
+      <div class="shortcut-row" title="Click to edit shortcut in Chrome" style="cursor: pointer;">
         <span class="shortcut-action">${label}</span>
-        <div class="shortcut-keys">${keysHtml}</div>
+        <div class="shortcut-keys" style="display: flex; align-items: center; gap: 8px;">
+          ${keysHtml}
+          <span class="shortcut-row-edit" style="font-size: 11px; color: var(--blue); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg2);">Edit</span>
+        </div>
       </div>`;
   }).join('');
+
+  // Make each row clickable
+  table.querySelectorAll('.shortcut-row').forEach(row => {
+    row.addEventListener('click', openOrCopyShortcutsUrl);
+  });
 }
 
 /**
@@ -253,24 +261,35 @@ function formatShortcut(shortcut) {
     .join('');
 }
 
+async function openOrCopyShortcutsUrl() {
+  // Chrome extensions cannot navigate to chrome:// URLs via href.
+  // chrome.tabs.create works here because options pages have the
+  // `tabs` permission implicitly via `openOptionsPage`.
+  try {
+    await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    showToast('Opening Chrome Shortcuts Manager…');
+  } catch {
+    // Fallback: copy URL to clipboard and show a toast
+    try {
+      await navigator.clipboard.writeText('chrome://extensions/shortcuts');
+      showToast('URL copied! Paste in new tab: chrome://extensions/shortcuts');
+    } catch {
+      showToast('Go to chrome://extensions/shortcuts in a new tab');
+    }
+  }
+}
+
 function bindShortcutsSection() {
   const btn = $('btn-edit-shortcuts');
-  if (!btn) return;
+  if (btn) {
+    btn.addEventListener('click', openOrCopyShortcutsUrl);
+  }
 
-  btn.addEventListener('click', async () => {
-    // Chrome extensions cannot navigate to chrome:// URLs via href.
-    // chrome.tabs.create works here because options pages have the
-    // `tabs` permission implicitly via `openOptionsPage`.
-    try {
-      await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
-    } catch {
-      // Fallback: copy URL to clipboard and show a toast
-      try {
-        await navigator.clipboard.writeText('chrome://extensions/shortcuts');
-        showToast('URL copied! Paste it in a new Chrome tab: chrome://extensions/shortcuts');
-      } catch {
-        showToast('Open a new tab and go to: chrome://extensions/shortcuts');
-      }
-    }
-  });
+  // Also make the hint code element clickable to copy/open
+  const hintUrl = document.querySelector('.hint-url');
+  if (hintUrl) {
+    hintUrl.style.cursor = 'pointer';
+    hintUrl.title = 'Click to open or copy shortcuts URL';
+    hintUrl.addEventListener('click', openOrCopyShortcutsUrl);
+  }
 }

@@ -756,19 +756,6 @@
     return true; // typo was performed, need correction
   }
 
-  // ─── Helper: find last focused input ────────────────────────────────────────
-
-  function findFocusedOrLastInput() {
-    const active = document.activeElement;
-    if (active && isTypeable(active)) return active;
-    // Try to find any visible textarea/input
-    const inputs = [...document.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]')];
-    return inputs.find(el => {
-      const r = el.getBoundingClientRect();
-      return r.width > 0 && r.height > 0;
-    }) || null;
-  }
-
   // ─── Abort / Stop ───────────────────────────────────────────────────────────
 
   function abortTyping() {
@@ -834,6 +821,68 @@
         startTyping(msg).then(result => sendResponse(result)).catch(e => sendResponse({ error: e.message }));
         return true; // async
 
+      case 'startTypingFromCommand':
+        // If already typing, toggle pause/resume
+        if (typingState.active) {
+          typingState.paused = !typingState.paused;
+          if (!typingState.paused && typingState.pauseResolve) {
+            typingState.pauseResolve();
+            typingState.pauseResolve = null;
+          }
+          showFeedback(typingState.paused ? '⏸ Typing paused' : '▶ Typing resumed', 'info');
+          chrome.runtime.sendMessage({
+            action: 'statusUpdate',
+            status: typingState.paused ? 'paused' : 'typing',
+            charIndex: typingState.charIndex,
+            totalChars: typingState.totalChars,
+          }).catch(() => {});
+          sendResponse({ ok: true, status: typingState.paused ? 'paused' : 'typing' });
+          break;
+        }
+
+        // Load saved text and start typing immediately at cursor
+        chrome.storage.local.get(['tba_last_text', 'tba_delay', 'tba_linebreak_delay', 'tba_start_delay'], async (res) => {
+          const text = res.tba_last_text || '';
+          if (!text.trim()) {
+            showFeedback('⚠️ No text to type! Paste text into TypeByAman first.', 'warning');
+            sendResponse({ error: 'No text saved' });
+            return;
+          }
+          const result = await startTyping({
+            text: text,
+            delay: res.tba_delay || 50,
+            linebreakDelay: res.tba_linebreak_delay || 0,
+            startDelay: res.tba_start_delay || 0,
+          });
+          if (result.error) {
+            showFeedback('⚠️ ' + result.error, 'error');
+          } else {
+            showFeedback('▶ Typing started…', 'info');
+          }
+          sendResponse(result);
+        });
+        return true; // async
+
+      case 'pauseResumeFromCommand':
+        if (!typingState.active) {
+          sendResponse({ ok: false, error: 'Not typing' });
+          break;
+        }
+        typingState.paused = !typingState.paused;
+        if (!typingState.paused && typingState.pauseResolve) {
+          typingState.pauseResolve();
+          typingState.pauseResolve = null;
+        }
+        showFeedback(typingState.paused ? '⏸ Typing paused' : '▶ Typing resumed', 'info');
+        chrome.runtime.sendMessage({
+          action: 'statusUpdate',
+          status: typingState.paused ? 'paused' : 'typing',
+          charIndex: typingState.charIndex,
+          totalChars: typingState.totalChars,
+        }).catch(() => {});
+        sendResponse({ ok: true, paused: typingState.paused });
+        break;
+
       case 'pauseTyping':
         typingState.paused = true;
         sendResponse({ ok: true });
@@ -851,6 +900,7 @@
 
       case 'stopTyping':
         abortTyping();
+        showFeedback('⏹ Typing stopped', 'info');
         sendResponse({ ok: true, charIndex: typingState.charIndex });
         break;
 
