@@ -26,9 +26,9 @@ desktop.ini
 dist/
 *.tsbuildinfo
 
-# Extension packages (can be built via GitHub Actions or locally)
-*.vsix
+# Extension packages
 *.zip
+!vscode-extension/*.vsix
 
 # Temporary scratch
 scratch/
