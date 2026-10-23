@@ -1,0 +1,166 @@
+{
+  "name": "typebyaman",
+  "displayName": "TypeByAman",
+  "description": "A premium local typing/replay utility. Gradually reproduce text or source code in your editor. Type. Replay. Create.",
+  "version": "1.0.0",
+  "publisher": "AmanKumar",
+  "author": {
+    "name": "Aman Kumar",
+    "url": "https://github.com/Amankr0075"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Amankr0075",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Amankr0075/typebyaman"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other", "Education", "Formatters"],
+  "keywords": ["typing", "replay", "demo", "tutorial", "accessibility", "automation"],
+  "icon": "assets/icon128.png",
+  "activationEvents": ["onCommand:typebyaman.start"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "typebyaman.start",
+        "title": "TypeByAman: Start Typing",
+        "category": "TypeByAman"
+      },
+      {
+        "command": "typebyaman.pause",
+        "title": "TypeByAman: Pause",
+        "category": "TypeByAman"
+      },
+      {
+        "command": "typebyaman.resume",
+        "title": "TypeByAman: Resume",
+        "category": "TypeByAman"
+      },
+      {
+        "command": "typebyaman.stop",
+        "title": "TypeByAman: Stop",
+        "category": "TypeByAman"
+      },
+      {
+        "command": "typebyaman.restart",
+        "title": "TypeByAman: Restart",
+        "category": "TypeByAman"
+      },
+      {
+        "command": "typebyaman.configureSpeed",
+        "title": "TypeByAman: Configure Speed",
+        "category": "TypeByAman"
+      },
+      {
+        "command": "typebyaman.openPanel",
+        "title": "TypeByAman: Open Control Panel",
+        "category": "TypeByAman"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "typebyaman.start",
+        "key": "alt+shift+s",
+        "when": "editorFocus"
+      },
+      {
+        "command": "typebyaman.pause",
+        "key": "alt+shift+p",
+        "when": "editorFocus"
+      },
+      {
+        "command": "typebyaman.stop",
+        "key": "alt+shift+x",
+        "when": "editorFocus"
+      },
+      {
+        "command": "typebyaman.openPanel",
+        "key": "alt+shift+t"
+      }
+    ],
+    "configuration": {
+      "title": "TypeByAman",
+      "properties": {
+        "typebyaman.characterDelay": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 9999,
+          "description": "Delay between each character in milliseconds."
+        },
+        "typebyaman.lineBreakDelay": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 9999,
+          "description": "Extra delay after each line break in milliseconds."
+        },
+        "typebyaman.startDelay": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 9999,
+          "description": "Delay before typing starts (milliseconds)."
+        },
+        "typebyaman.speedPreset": {
+          "type": "string",
+          "default": "Normal",
+          "enum": ["Very Slow", "Slow", "Normal", "Fast", "Very Fast", "Custom"],
+          "enumDescriptions": [
+            "1000 ms/char — very deliberate pace",
+            "250 ms/char — slow and readable",
+            "50 ms/char — comfortable demo speed",
+            "20 ms/char — fast typing",
+            "5 ms/char — rapid reproduction",
+            "Use the characterDelay setting"
+          ],
+          "description": "Typing speed preset."
+        },
+        "typebyaman.preserveIndentation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Preserve indentation (spaces and tabs) exactly as in source."
+        },
+        "typebyaman.preserveLineBreaks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Preserve blank lines and line endings."
+        }
+      }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "typebyaman.start",
+          "group": "typebyaman",
+          "when": "editorFocus"
+        }
+      ],
+      "commandPalette": [
+        { "command": "typebyaman.start" },
+        { "command": "typebyaman.pause" },
+        { "command": "typebyaman.resume" },
+        { "command": "typebyaman.stop" },
+        { "command": "typebyaman.restart" },
+        { "command": "typebyaman.configureSpeed" },
+        { "command": "typebyaman.openPanel" }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^2.0.0"
+  }
+}

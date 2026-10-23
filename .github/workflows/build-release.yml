@@ -1,0 +1,45 @@
+name: Build and Package Extensions
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Build VS Code Extension
+      - name: Install VS Code Extension Dependencies
+        working-directory: ./vscode-extension
+        run: npm ci
+
+      - name: Compile & Package VS Code Extension (.vsix)
+        working-directory: ./vscode-extension
+        run: npx vsce package --no-dependencies
+
+      # Package Chrome Extension
+      - name: Package Chrome Extension (.zip)
+        run: |
+          mkdir -p dist
+          cd chrome-extension
+          zip -r ../dist/typebyaman-chrome-extension.zip . -x "node_modules/*" "package-lock.json" "generate-icons.js" "create-placeholder-icons.js"
+          cd ..
+          cp vscode-extension/*.vsix dist/
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: typebyaman-packages
+          path: dist/*

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TypeByAman — The Ultimate Typing & Replay Studio</title>
+  <meta name="description" content="TypeByAman is a 100% free, local typing and replay utility created by Aman Kumar. Gradually reproduce text and code for videos, tutorials, demos, and testing with no server or account required.">
+  <meta name="author" content="Aman Kumar">
+  <meta name="keywords" content="typing replay, code simulator, automated typing, keystroke replay, coding tutorials, screen recorder typing, TypeByAman, Aman Kumar">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="TypeByAman — Type. Replay. Create.">
+  <meta property="og:description" content="Premium local typing and code reproduction tool. 100% Free, zero servers, runs entirely in your browser and editors.">
+  <meta property="og:image" content="assets/icon128.png">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/icon48.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+  <!-- Glowing Background Orbs -->
+  <div class="glow-orb orb-1" aria-hidden="true"></div>
+  <div class="glow-orb orb-2" aria-hidden="true"></div>
+  <div class="glow-orb orb-3" aria-hidden="true"></div>
+
+  <!-- Header / Navbar -->
+  <header class="app-header">
+    <div class="container header-container">
+      <div class="brand">
+        <div class="brand-icon-wrapper">
+          <img src="assets/icon48.png" alt="TypeByAman Logo" class="brand-logo" width="36" height="36">
+          <span class="brand-pulse"></span>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">TypeByAman</span>
+          <span class="brand-badge">v1.0 • 100% Free</span>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <a href="#studio" class="nav-link active">Live Studio</a>
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#extensions" class="nav-link">Extensions</a>
+        <a href="#shortcuts" class="nav-link">Shortcuts</a>
+        <a href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer" class="btn-github">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>Created by Aman Kumar</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="container hero-container">
+      <div class="hero-tag">
+        <span class="tag-dot"></span>
+        Zero Server Overhead • 100% Client-Side • Unlimited Personal Use
+      </div>
+      <h1 class="hero-title">
+        Type. Replay. <span class="gradient-text">Create.</span>
+      </h1>
+      <p class="hero-subtitle">
+        The ultimate local typing and replay engine for programmers, creators, educators, and presenters.
+        Gradually reproduce code and text keystroke-by-keystroke with human-like rhythm, realistic sound, and millisecond precision.
+      </p>
+
+      <div class="hero-actions">
+        <a href="#studio" class="btn-primary" id="btn-jump-studio">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Try Live Interactive Studio
+        </a>
+        <a href="#extensions" class="btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+          Get VS Code & Chrome Extensions
+        </a>
+      </div>
+
+      <!-- Quick Metrics Strip -->
+      <div class="metrics-strip">
+        <div class="metric-item">
+          <span class="metric-val">100%</span>
+          <span class="metric-lbl">Free Forever</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-val">0 ms - 5000 ms</span>
+          <span class="metric-lbl">Configurable Speeds</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-val">0 Cloud Calls</span>
+          <span class="metric-lbl">Total Local Privacy</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-val">3 Platforms</span>
+          <span class="metric-lbl">Web • Chrome • VS Code</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Studio Section -->
+  <section class="studio-section" id="studio">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Interactive Sandbox</div>
+        <h2 class="section-title">Live Typing & Replay Studio</h2>
+        <p class="section-desc">Paste your own source code or text below, pick a speed preset or custom delay, and watch it type in real time.</p>
+      </div>
+
+      <div class="studio-grid">
+        <!-- Control Sidebar -->
+        <div class="studio-sidebar card-glass">
+          <!-- Preset Snippets -->
+          <div class="control-group">
+            <label class="control-label" for="snippet-select">
+              <span>Code Preset</span>
+              <span class="label-hint">Sample scripts</span>
+            </label>
+            <div class="select-wrapper">
+              <select id="snippet-select" class="form-select">
+                <option value="javascript">JavaScript • Asynchronous Fibonacci</option>
+                <option value="python">Python • Neural Network Layer</option>
+                <option value="react">React • Glassmorphic Counter Hook</option>
+                <option value="html">HTML & CSS • Cyberpunk Hero</option>
+                <option value="markdown">Markdown • Developer Notes</option>
+                <option value="custom">Custom Text (Your Own)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Speed Presets -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Typing Speed</span>
+              <span class="preset-indicator" id="preset-badge">Normal (50ms)</span>
+            </label>
+            <div class="speed-preset-grid">
+              <button type="button" class="preset-btn" data-preset="Very Slow" data-delay="1000">Very Slow<span class="sub">1000ms</span></button>
+              <button type="button" class="preset-btn" data-preset="Slow" data-delay="250">Slow<span class="sub">250ms</span></button>
+              <button type="button" class="preset-btn active" data-preset="Normal" data-delay="50">Normal<span class="sub">50ms</span></button>
+              <button type="button" class="preset-btn" data-preset="Fast" data-delay="20">Fast<span class="sub">20ms</span></button>
+              <button type="button" class="preset-btn" data-preset="Very Fast" data-delay="5">Very Fast<span class="sub">5ms</span></button>
+              <button type="button" class="preset-btn" data-preset="Custom" data-delay="30">Custom<span class="sub">Manual</span></button>
+            </div>
+          </div>
+
+          <!-- Fine-Tuned Custom Sliders -->
+          <div class="control-group">
+            <div class="slider-header">
+              <label for="char-delay-slider" class="control-label">Character Delay</label>
+              <span class="slider-value-display"><input type="number" id="char-delay-num" min="1" max="5000" value="50"> ms</span>
+            </div>
+            <input type="range" id="char-delay-slider" class="slider-input" min="1" max="1000" value="50" step="1">
+            <div class="slider-scale">
+              <span>1ms (Ludicrous)</span>
+              <span>1000ms (Slow)</span>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="slider-header">
+              <label for="line-delay-slider" class="control-label">Line Break Pause</label>
+              <span class="slider-value-display"><input type="number" id="line-delay-num" min="0" max="5000" value="150"> ms</span>
+            </div>
+            <input type="range" id="line-delay-slider" class="slider-input" min="0" max="2000" value="150" step="10">
+          </div>
+
+          <div class="control-group">
+            <div class="slider-header">
+              <label for="start-delay-slider" class="control-label">Start Countdown</label>
+              <span class="slider-value-display"><input type="number" id="start-delay-num" min="0" max="10" value="0"> s</span>
+            </div>
+            <input type="range" id="start-delay-slider" class="slider-input" min="0" max="10" value="0" step="1">
+          </div>
+
+          <!-- Feature Toggles -->
+          <div class="control-group toggles-group">
+            <label class="toggle-item">
+              <input type="checkbox" id="toggle-sound" checked>
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">
+                <strong>Mechanical Sound</strong>
+                <small>Authentic click synthesis</small>
+              </span>
+            </label>
+
+            <label class="toggle-item">
+              <input type="checkbox" id="toggle-indent" checked>
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">
+                <strong>Preserve Indents & Spaces</strong>
+                <small>Exact code formatting</small>
+              </span>
+            </label>
+
+            <label class="toggle-item">
+              <input type="checkbox" id="toggle-auto-scroll" checked>
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">
+                <strong>Auto Follow Cursor</strong>
+                <small>Smooth viewport scroll</small>
+              </span>
+            </label>
+          </div>
+
+          <!-- Input Source Drawer Toggle -->
+          <div class="control-group">
+            <button type="button" class="btn-toggle-input" id="btn-edit-source">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span>Edit / Paste Source Text</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Editor & Live Screen -->
+        <div class="studio-main">
+          <!-- Textarea Input Box (Collapsible / Modal) -->
+          <div class="source-drawer card-glass" id="source-drawer" style="display: none;">
+            <div class="drawer-header">
+              <div class="drawer-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>Source Text / Code To Replay</span>
+              </div>
+              <div class="drawer-actions">
+                <button type="button" class="btn-sm" id="btn-clear-source">Clear</button>
+                <button type="button" class="btn-sm btn-primary-sm" id="btn-save-source">Done Editing</button>
+              </div>
+            </div>
+            <textarea id="raw-text-input" class="source-textarea" placeholder="Paste or type any source code or text here to be reproduced..."></textarea>
+          </div>
+
+          <!-- Virtual Code Editor Window -->
+          <div class="editor-window card-glass" id="editor-container">
+            <!-- Mac OS / IDE Style Title Bar -->
+            <div class="editor-header">
+              <div class="window-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <div class="editor-tabs">
+                <div class="editor-tab active" id="editor-filename">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                  </svg>
+                  <span id="tab-name">demo.js</span>
+                  <span class="tab-indicator" id="status-dot"></span>
+                </div>
+              </div>
+              <div class="editor-actions">
+                <button type="button" class="btn-icon" id="btn-copy-output" title="Copy typed output">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+                <button type="button" class="btn-icon" id="btn-fullscreen" title="Toggle Fullscreen">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Virtual Editor Viewport -->
+            <div class="editor-body" id="editor-body">
+              <div class="line-numbers" id="line-numbers">1</div>
+              <div class="code-viewport" id="code-viewport">
+                <pre class="code-content"><code id="code-target"></code><span class="typing-cursor" id="typing-cursor"></span></pre>
+              </div>
+            </div>
+
+            <!-- Telemetry / Live Stats Bar -->
+            <div class="editor-statusbar">
+              <div class="status-left">
+                <span class="badge-status idle" id="engine-status-badge">Ready</span>
+                <span class="status-item"><strong id="stat-progress">0%</strong> completed</span>
+                <span class="status-item"><strong id="stat-chars">0 / 0</strong> chars</span>
+              </div>
+              <div class="status-right">
+                <span class="status-item"><strong id="stat-wpm">0</strong> WPM</span>
+                <span class="status-item"><strong id="stat-cpm">0</strong> CPM</span>
+                <span class="status-item"><strong id="stat-time">00:00</strong></span>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-track">
+              <div class="progress-fill" id="progress-bar" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Controls Action Toolbar -->
+          <div class="playback-controls card-glass">
+            <div class="playback-buttons">
+              <button type="button" class="btn-play-primary" id="btn-play">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" id="play-icon">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <span id="play-text">Start Replay</span>
+              </button>
+
+              <button type="button" class="btn-control" id="btn-pause" disabled title="Pause (Alt+Shift+P)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="4" width="4" height="16"></rect>
+                  <rect x="14" y="4" width="4" height="16"></rect>
+                </svg>
+                <span>Pause</span>
+              </button>
+
+              <button type="button" class="btn-control" id="btn-stop" disabled title="Stop (Alt+Shift+X)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="4" y="4" width="16" height="16"></rect>
+                </svg>
+                <span>Stop</span>
+              </button>
+
+              <button type="button" class="btn-control" id="btn-restart" title="Restart from beginning">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+                <span>Restart</span>
+              </button>
+
+              <button type="button" class="btn-control" id="btn-step" title="Step by 1 character">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                  <line x1="19" y1="5" x2="19" y2="19"></line>
+                </svg>
+                <span>Step</span>
+              </button>
+            </div>
+
+            <div class="countdown-badge" id="countdown-display" style="display: none;">
+              Starting in <strong id="countdown-val">3</strong>...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features Section -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Built for Precision</div>
+        <h2 class="section-title">Everything You Need for Flawless Demos</h2>
+        <p class="section-desc">Designed with perfectionism for software engineers, educators, tech YouTubers, and QA specialists.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card card-glass">
+          <div class="feature-icon-box cyan">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <h3 class="feature-title">Millisecond Keystroke Speed</h3>
+          <p class="feature-text">Switch instantly between presets (Very Slow, Slow, Normal, Fast, Very Fast) or choose an exact delay down to 1 millisecond. Includes custom line-break and start delays.</p>
+        </div>
+
+        <div class="feature-card card-glass">
+          <div class="feature-icon-box purple">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <h3 class="feature-title">100% Client-Side Privacy</h3>
+          <p class="feature-text">Zero external servers, zero trackers, zero data collection. All text processing occurs in your local browser or editor memory. Suitable for proprietary code.</p>
+        </div>
+
+        <div class="feature-card card-glass">
+          <div class="feature-icon-box emerald">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+          </div>
+          <h3 class="feature-title">Indentation & Format Integrity</h3>
+          <p class="feature-text">Tabs, nested indentations, multi-line blocks, empty lines, and special unicode symbols are reproduced with 100% pixel-perfect fidelity without corruption.</p>
+        </div>
+
+        <div class="feature-card card-glass">
+          <div class="feature-icon-box amber">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+          </div>
+          <h3 class="feature-title">Synthetic Mechanical Audio</h3>
+          <p class="feature-text">High-fidelity Web Audio synthesis replicates authentic mechanical tactile switches (Blue, Brown, and Red sound profiles) in real time without external audio files.</p>
+        </div>
+
+        <div class="feature-card card-glass">
+          <div class="feature-icon-box rose">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <h3 class="feature-title">Full Screen Recording Mode</h3>
+          <p class="feature-text">Distraction-free clean viewing window optimized for OBS, Camtasia, QuickTime, Loom, and ScreenFlow screen capturing without UI clutter.</p>
+        </div>
+
+        <div class="feature-card card-glass">
+          <div class="feature-icon-box blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+              <line x1="16" y1="8" x2="2" y2="22"></line>
+              <line x1="17.5" y1="15" x2="9" y2="15"></line>
+            </svg>
+          </div>
+          <h3 class="feature-title">Interactive Keyboard Shortcuts</h3>
+          <p class="feature-text">Pause, resume, restart, and abort your typing stream instantly using universal hotkeys without ever taking your hands off the keyboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Extensions Section -->
+  <section class="extensions-section" id="extensions">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Available Everywhere</div>
+        <h2 class="section-title">Install TypeByAman in Your Daily Workflow</h2>
+        <p class="section-desc">Type directly into Google Docs, CodePen, VS Code, Notion, LeetCode, ChatGPT inputs, and anywhere in Chrome or your code editor.</p>
+      </div>
+
+      <div class="extensions-grid">
+        <!-- VS Code Extension Card -->
+        <div class="extension-card card-glass featured-extension">
+          <div class="ext-badge">Recommended for Developers</div>
+          <div class="ext-header">
+            <div class="ext-icon-box">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="#007acc">
+                <path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .32 8.709l3.414 3.29-3.414 3.291a1 1 0 0 0 .007 1.448l1.322 1.202c.371.338.928.36 1.276.057l4.12-3.128 9.46 8.63c.47.43 1.156.544 1.705.29l4.94-2.377A1.5 1.5 0 0 0 24 19.985V4.015a1.5 1.5 0 0 0-.85-1.428zM18 17.514l-6.945-5.514L18 6.486v11.028z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="ext-title">VS Code Extension</h3>
+              <p class="ext-sub">Replay code in real VS Code editors</p>
+            </div>
+          </div>
+
+          <p class="ext-description">
+            Gradually type any active editor selection, clipboard content, or custom script directly inside Visual Studio Code. Complete with status bar progress, command palette integration, and webview dashboard.
+          </p>
+
+          <div class="install-box">
+            <div class="install-label">Quick Install via VS Code VSIX:</div>
+            <code class="install-command">code --install-extension vscode-extension/typebyaman-1.0.0.vsix</code>
+          </div>
+
+          <ul class="ext-features-list">
+            <li>✓ Type into active VS Code document</li>
+            <li>✓ Built-in Status Bar indicator</li>
+            <li>✓ Alt+Shift+S (Start), Alt+Shift+P (Pause/Resume), Alt+Shift+X (Stop)</li>
+            <li>✓ Full VS Code Settings integration</li>
+          </ul>
+
+          <div class="ext-footer">
+            <a href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer" class="btn-card-action">
+              <span>View Source on GitHub</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Chrome Extension Card -->
+        <div class="extension-card card-glass">
+          <div class="ext-badge">For Browsers & Web Editors</div>
+          <div class="ext-header">
+            <div class="ext-icon-box">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="#4285F4">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.8a7.2 7.2 0 1 1 0 14.4 7.2 7.2 0 0 1 0-14.4z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="ext-title">Google Chrome Extension</h3>
+              <p class="ext-sub">Manifest V3 • Works on every webpage</p>
+            </div>
+          </div>
+
+          <p class="ext-description">
+            Type into any text area, contenteditable element, CodeMirror, Monaco editor, or input box across any website with custom speeds, visual floating HUD, and background shortcuts.
+          </p>
+
+          <div class="install-box">
+            <div class="install-label">How to load in Google Chrome:</div>
+            <ol class="install-steps">
+              <li>Open <code>chrome://extensions</code> in Chrome</li>
+              <li>Toggle on <strong>Developer mode</strong> (top-right)</li>
+              <li>Click <strong>Load unpacked</strong> and select <code>chrome-extension</code> folder</li>
+            </ol>
+          </div>
+
+          <ul class="ext-features-list">
+            <li>✓ Works on CodePen, JSFiddle, LeetCode, GitHub, Docs</li>
+            <li>✓ Floating on-screen mini controller HUD</li>
+            <li>✓ Preserves indentation & multi-line blocks</li>
+            <li>✓ Pure Manifest V3 compliant</li>
+          </ul>
+
+          <div class="ext-footer">
+            <a href="chrome-extension/" class="btn-card-action">
+              <span>Explore Chrome Extension Folder</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shortcuts Section -->
+  <section class="shortcuts-section" id="shortcuts">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Keyboard Accelerators</div>
+        <h2 class="section-title">Speed Up Your Workflow</h2>
+        <p class="section-desc">Unified keybindings across both the Web Studio, Chrome Extension, and VS Code extension.</p>
+      </div>
+
+      <div class="shortcuts-grid">
+        <div class="shortcut-card card-glass">
+          <div class="keys-group">
+            <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>
+          </div>
+          <div class="shortcut-info">
+            <h4>Start / Replay</h4>
+            <p>Initiate reproduction using current speed configuration</p>
+          </div>
+        </div>
+
+        <div class="shortcut-card card-glass">
+          <div class="keys-group">
+            <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>
+          </div>
+          <div class="shortcut-info">
+            <h4>Pause / Resume</h4>
+            <p>Freeze or unfreeze typing at the current keystroke</p>
+          </div>
+        </div>
+
+        <div class="shortcut-card card-glass">
+          <div class="keys-group">
+            <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd>
+          </div>
+          <div class="shortcut-info">
+            <h4>Stop / Abort</h4>
+            <p>Immediately cancel reproduction and reset engine</p>
+          </div>
+        </div>
+
+        <div class="shortcut-card card-glass">
+          <div class="keys-group">
+            <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd>
+          </div>
+          <div class="shortcut-info">
+            <h4>Open Control Panel</h4>
+            <p>Bring up the TypeByAman configuration dashboard</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="container footer-container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="brand">
+            <img src="assets/icon48.png" alt="TypeByAman" width="28" height="28">
+            <span class="brand-title">TypeByAman</span>
+          </div>
+          <p class="footer-bio">
+            A premium, 100% free local typing & replay utility crafted with care by <strong>Aman Kumar</strong>.
+            No servers, no tracking, no subscription. Hosted directly on GitHub.
+          </p>
+          <div class="footer-links">
+            <a href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer" class="link-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <span>GitHub: Amankr0075</span>
+            </a>
+            <span class="dot-separator">•</span>
+            <a href="LICENSE" class="link-item">MIT License</a>
+            <span class="dot-separator">•</span>
+            <a href="README.md" class="link-item">Documentation</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2025 TypeByAman. Released under the MIT License by <a href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer">Aman Kumar</a>.</p>
+        <p class="footer-tagline">Type. Replay. Create.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

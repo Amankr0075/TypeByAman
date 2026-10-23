@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TypeByAman — A premium local typing/replay utility by Aman Kumar" />
+  <title>TypeByAman</title>
+  <link rel="stylesheet" href="popup.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body data-theme="dark">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="6" width="20" height="13" rx="2" stroke="url(#grad1)" stroke-width="1.8" fill="none"/>
+          <path d="M6 10h2M10 10h1M13 10h1M16 10h2M6 13h1M9 13h6M17 13h1M8 16h8" stroke="url(#grad1)" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M12 2v2" stroke="url(#grad1)" stroke-width="1.5" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="grad1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#4f8ef7"/>
+              <stop offset="100%" stop-color="#a855f7"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">TYPEBYAMAN</span>
+        <span class="brand-tagline">Type. Replay. Create.</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-theme-toggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
+        <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </button>
+      <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Open settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="app-main">
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav" role="tablist" aria-label="Main navigation">
+      <button class="tab-btn active" id="tab-editor" role="tab" aria-selected="true" aria-controls="panel-editor" data-tab="editor">Editor</button>
+      <button class="tab-btn" id="tab-about" role="tab" aria-selected="false" aria-controls="panel-about" data-tab="about">About</button>
+    </nav>
+
+    <!-- Editor Panel -->
+    <div id="panel-editor" class="tab-panel active" role="tabpanel" aria-labelledby="tab-editor">
+
+      <!-- Status Bar -->
+      <div class="status-bar" id="status-bar" aria-live="polite" aria-label="Typing status">
+        <div class="status-item" id="status-chars">
+          <span class="status-label">Chars</span>
+          <span class="status-value" id="val-chars">0 / 0</span>
+        </div>
+        <div class="status-divider"></div>
+        <div class="status-item" id="status-progress-info">
+          <span class="status-label">Progress</span>
+          <span class="status-value" id="val-progress">0%</span>
+        </div>
+        <div class="status-divider"></div>
+        <div class="status-item">
+          <span class="status-label">Speed</span>
+          <span class="status-value" id="val-speed">50 ms</span>
+        </div>
+        <div class="status-divider"></div>
+        <div class="status-item">
+          <span class="status-label">Status</span>
+          <span class="status-value status-badge idle" id="val-status">Idle</span>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-track" aria-label="Typing progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progress-bar-container">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        <div class="progress-glow" id="progress-glow" style="width:0%"></div>
+      </div>
+
+      <!-- Text Input Area -->
+      <div class="input-section">
+        <div class="input-label-row">
+          <label class="section-label" for="text-input">Source Text / Code</label>
+          <div class="input-actions">
+            <button class="micro-btn" id="btn-paste" title="Paste from clipboard" aria-label="Paste from clipboard">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+              Paste
+            </button>
+            <button class="micro-btn" id="btn-clear-text" title="Clear text" aria-label="Clear text">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              Clear
+            </button>
+          </div>
+        </div>
+        <div class="textarea-wrapper">
+          <textarea
+            id="text-input"
+            class="code-textarea"
+            placeholder="Paste your text or source code here...&#10;&#10;Supports:&#10;• Multiline code  • Indentation&#10;• Unicode chars   • Special chars&#10;• Large files     • Any language"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            aria-label="Input text or code to type"
+          ></textarea>
+          <div class="textarea-info" id="textarea-char-count">0 characters</div>
+        </div>
+      </div>
+
+      <!-- Target Selector -->
+      <div class="target-section">
+        <label class="section-label" for="target-selector">Target Field on Page</label>
+        <div class="target-row">
+          <button class="target-btn" id="btn-pick-target" aria-label="Pick target input field on page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+            Pick Target Field
+          </button>
+          <div class="target-status" id="target-status">
+            <div class="target-dot" id="target-dot"></div>
+            <span id="target-label">No target selected</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Speed Control -->
+      <div class="speed-section">
+        <div class="speed-header">
+          <label class="section-label">Typing Speed</label>
+          <div class="speed-display">
+            <span id="speed-display-value">50</span>
+            <span class="speed-unit">ms/char</span>
+          </div>
+        </div>
+
+        <!-- Speed Presets -->
+        <div class="speed-presets" role="group" aria-label="Speed presets">
+          <button class="preset-btn" data-delay="1000" aria-label="Very Slow — 1000ms">Very Slow</button>
+          <button class="preset-btn" data-delay="250" aria-label="Slow — 250ms">Slow</button>
+          <button class="preset-btn active" data-delay="50" aria-label="Normal — 50ms">Normal</button>
+          <button class="preset-btn" data-delay="20" aria-label="Fast — 20ms">Fast</button>
+          <button class="preset-btn" data-delay="5" aria-label="Very Fast — 5ms">Very Fast</button>
+          <button class="preset-btn" data-delay="custom" id="btn-custom-speed" aria-label="Custom speed">Custom</button>
+        </div>
+
+        <!-- Custom Speed Controls -->
+        <div class="custom-speed-panel" id="custom-speed-panel" style="display:none">
+          <div class="slider-row">
+            <input
+              type="range"
+              id="speed-slider"
+              min="1"
+              max="2000"
+              value="50"
+              step="1"
+              class="speed-slider"
+              aria-label="Speed slider"
+            />
+          </div>
+          <div class="quick-delays" role="group" aria-label="Quick delay values">
+            <button class="delay-chip" data-delay="10">10ms</button>
+            <button class="delay-chip" data-delay="20">20ms</button>
+            <button class="delay-chip" data-delay="30">30ms</button>
+            <button class="delay-chip" data-delay="40">40ms</button>
+            <button class="delay-chip" data-delay="50">50ms</button>
+            <button class="delay-chip" data-delay="100">100ms</button>
+            <button class="delay-chip" data-delay="250">250ms</button>
+            <button class="delay-chip" data-delay="500">500ms</button>
+            <button class="delay-chip" data-delay="1000">1000ms</button>
+            <button class="delay-chip" data-delay="2000">2000ms</button>
+          </div>
+          <div class="custom-input-row">
+            <label class="micro-label" for="custom-delay-input">Custom delay (ms):</label>
+            <input type="number" id="custom-delay-input" class="custom-input" min="1" max="9999" value="50" aria-label="Custom delay in milliseconds" />
+          </div>
+        </div>
+
+        <!-- Line-break delay -->
+        <div class="linebreak-row">
+          <label class="micro-label" for="linebreak-delay">Line-break extra delay (ms):</label>
+          <input type="number" id="linebreak-delay" class="custom-input small" min="0" max="9999" value="0" aria-label="Line-break delay in milliseconds" />
+        </div>
+
+        <!-- Start delay -->
+        <div class="linebreak-row">
+          <label class="micro-label" for="start-delay">Start delay (ms):</label>
+          <input type="number" id="start-delay" class="custom-input small" min="0" max="9999" value="0" aria-label="Start delay in milliseconds" />
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls-section">
+        <div class="controls-row">
+          <button class="ctrl-btn primary" id="btn-start" aria-label="Start typing (Alt+Shift+S)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            Start
+          </button>
+          <button class="ctrl-btn" id="btn-pause" disabled aria-label="Pause typing (Alt+Shift+P)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            Pause
+          </button>
+          <button class="ctrl-btn" id="btn-resume" disabled aria-label="Resume typing (Alt+Shift+P)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            Resume
+          </button>
+          <button class="ctrl-btn danger" id="btn-stop" disabled aria-label="Stop typing (Alt+Shift+X)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            Stop
+          </button>
+          <button class="ctrl-btn" id="btn-restart" disabled aria-label="Restart typing">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+            Restart
+          </button>
+        </div>
+
+        <!-- Keyboard shortcut hints -->
+        <div class="shortcut-hints">
+          <span class="shortcut"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> Start</span>
+          <span class="shortcut"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> Pause/Resume</span>
+          <span class="shortcut"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> Stop</span>
+        </div>
+      </div>
+
+      <!-- Error / Info Message -->
+      <div class="message-area" id="message-area" style="display:none" role="alert" aria-live="assertive">
+        <div class="message-content" id="message-content"></div>
+      </div>
+
+    </div>
+
+    <!-- About Panel -->
+    <div id="panel-about" class="tab-panel" role="tabpanel" aria-labelledby="tab-about" style="display:none">
+      <div class="about-card">
+        <div class="about-logo">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="12" width="40" height="26" rx="4" stroke="url(#ag1)" stroke-width="2.5" fill="none"/>
+            <path d="M11 20h5M18 20h3M23 20h3M28 20h5M11 26h3M16 26h12M30 26h3M15 32h18" stroke="url(#ag1)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M24 4v5" stroke="url(#ag1)" stroke-width="2.5" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="ag1" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#4f8ef7"/>
+                <stop offset="100%" stop-color="#a855f7"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 class="about-title">TypeByAman</h1>
+        <p class="about-tagline">Type. Replay. Create.</p>
+        <p class="about-version">Version 1.0.0</p>
+
+        <div class="about-badges">
+          <span class="badge green">100% Free</span>
+          <span class="badge blue">Unlimited Use</span>
+          <span class="badge purple">Local Processing</span>
+        </div>
+        <div class="about-badges">
+          <span class="badge">No Subscription</span>
+          <span class="badge">No Account Required</span>
+        </div>
+
+        <div class="about-divider"></div>
+
+        <div class="about-info">
+          <div class="about-row">
+            <span class="about-key">Created by</span>
+            <span class="about-val">Aman Kumar</span>
+          </div>
+          <div class="about-row">
+            <span class="about-key">GitHub</span>
+            <a class="about-link" href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer" aria-label="Visit Aman Kumar's GitHub profile">github.com/Amankr0075</a>
+          </div>
+          <div class="about-row">
+            <span class="about-key">Privacy</span>
+            <span class="about-val">All data stays local — no servers, no tracking</span>
+          </div>
+          <div class="about-row">
+            <span class="about-key">License</span>
+            <span class="about-val">MIT — Free to use &amp; modify</span>
+          </div>
+        </div>
+
+        <div class="about-divider"></div>
+        <div class="about-desc">
+          <p>TypeByAman is a local typing/replay utility that gradually reproduces text or source code in any supported web-based editor or input field — perfect for coding demos, tutorials, screen recordings, and accessibility use cases.</p>
+        </div>
+
+        <button class="full-width-btn" id="btn-open-options">Open Full Settings Page</button>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

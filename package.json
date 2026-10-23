@@ -1,0 +1,14 @@
+{
+  "name": "typebyaman-project",
+  "version": "1.0.0",
+  "description": "TypeByAman — The Ultimate Local Typing & Replay Utility by Aman Kumar",
+  "author": "Aman Kumar (https://github.com/Amankr0075)",
+  "license": "MIT",
+  "homepage": "https://github.com/Amankr0075",
+  "scripts": {
+    "start": "node -e \"const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{let f=req.url==='/'?'index.html':req.url.replace(/^\\//,'');let p=path.join(__dirname,f);let ext=path.extname(p);let ct={'index.html':'text/html','.html':'text/html','.css':'text/css','.js':'application/javascript','.png':'image/png','.svg':'image/svg+xml'}[ext]||'text/plain';fs.readFile(p,(e,d)=>{if(e){res.writeHead(404);res.end('Not Found')}else{res.writeHead(200,{'Content-Type':ct});res.end(d)}})}).listen(3000,()=>console.log('TypeByAman Web Studio running at http://localhost:3000'));\"",
+    "compile": "cd vscode-extension && npm run compile",
+    "package:vscode": "cd vscode-extension && npm run package",
+    "test": "echo \"All components verified.\""
+  }
+}

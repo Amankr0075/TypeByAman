@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TypeByAman — Settings</title>
+  <meta name="description" content="TypeByAman settings page — configure typing speed, delays, and preferences." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body data-theme="dark">
+
+  <div class="page-wrapper">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect x="2" y="6" width="20" height="13" rx="2" stroke="url(#sg1)" stroke-width="1.8" fill="none"/>
+            <path d="M6 10h2M10 10h1M13 10h1M16 10h2M6 13h1M9 13h6M17 13h1M8 16h8" stroke="url(#sg1)" stroke-width="1.5" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="sg1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#4f8ef7"/>
+                <stop offset="100%" stop-color="#a855f7"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div>
+          <div class="sidebar-title">TYPEBYAMAN</div>
+          <div class="sidebar-sub">Settings</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-section="speed" href="#speed">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Speed &amp; Timing
+        </a>
+        <a class="nav-item" data-section="behavior" href="#behavior">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Behavior
+        </a>
+        <a class="nav-item" data-section="appearance" href="#appearance">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          Appearance
+        </a>
+        <a class="nav-item" data-section="shortcuts" href="#shortcuts">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h4M14 10h4M6 14h12"/></svg>
+          Shortcuts
+        </a>
+        <a class="nav-item" data-section="about" href="#about">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          About
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="btn-save-all" class="save-btn">
+          Save Settings
+        </button>
+        <button id="btn-reset" class="reset-btn">
+          Reset to Defaults
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+
+      <!-- Speed & Timing -->
+      <section id="speed" class="settings-section active">
+        <div class="section-header">
+          <h2 class="section-title">Speed &amp; Timing</h2>
+          <p class="section-desc">Configure how fast TypeByAman types characters into your target field.</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="setting-card">
+            <div class="setting-label">Speed Preset</div>
+            <div class="setting-desc">Choose a predefined typing speed</div>
+            <div class="preset-grid">
+              <button class="preset-option" data-delay="1000">
+                <span class="preset-name">Very Slow</span>
+                <span class="preset-ms">1000 ms</span>
+              </button>
+              <button class="preset-option" data-delay="250">
+                <span class="preset-name">Slow</span>
+                <span class="preset-ms">250 ms</span>
+              </button>
+              <button class="preset-option active" data-delay="50">
+                <span class="preset-name">Normal</span>
+                <span class="preset-ms">50 ms</span>
+              </button>
+              <button class="preset-option" data-delay="20">
+                <span class="preset-name">Fast</span>
+                <span class="preset-ms">20 ms</span>
+              </button>
+              <button class="preset-option" data-delay="5">
+                <span class="preset-name">Very Fast</span>
+                <span class="preset-ms">5 ms</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-label">Character Delay</div>
+            <div class="setting-desc">Time between each character (milliseconds)</div>
+            <div class="slider-group">
+              <input type="range" id="opt-delay-slider" min="1" max="2000" value="50" class="opt-slider" />
+              <div class="slider-meta">
+                <span class="slider-val" id="opt-delay-display">50 ms</span>
+                <input type="number" id="opt-delay-input" class="opt-number" min="1" max="9999" value="50" />
+              </div>
+            </div>
+            <div class="chip-grid" role="group" aria-label="Quick delay values">
+              <button class="opt-chip" data-delay="10">10ms</button>
+              <button class="opt-chip" data-delay="20">20ms</button>
+              <button class="opt-chip" data-delay="30">30ms</button>
+              <button class="opt-chip" data-delay="50">50ms</button>
+              <button class="opt-chip" data-delay="100">100ms</button>
+              <button class="opt-chip" data-delay="250">250ms</button>
+              <button class="opt-chip" data-delay="500">500ms</button>
+              <button class="opt-chip" data-delay="1000">1000ms</button>
+              <button class="opt-chip" data-delay="2000">2000ms</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-label">Line-Break Delay</div>
+            <div class="setting-desc">Extra delay added after each newline character (ms)</div>
+            <div class="input-row">
+              <input type="number" id="opt-linebreak-delay" class="opt-number large" min="0" max="9999" value="0" />
+              <span class="input-unit">ms</span>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-label">Start Delay</div>
+            <div class="setting-desc">Wait before typing begins after pressing Start (ms)</div>
+            <div class="input-row">
+              <input type="number" id="opt-start-delay" class="opt-number large" min="0" max="9999" value="0" />
+              <span class="input-unit">ms</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Behavior -->
+      <section id="behavior" class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">Behavior</h2>
+          <p class="section-desc">Configure how TypeByAman handles text and interacts with pages.</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="setting-card">
+            <div class="setting-label">Text Preservation</div>
+            <div class="setting-desc">TypeByAman always preserves your original content exactly</div>
+            <div class="feature-list">
+              <div class="feature-item enabled">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Preserve indentation (spaces &amp; tabs)
+              </div>
+              <div class="feature-item enabled">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Preserve blank lines
+              </div>
+              <div class="feature-item enabled">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Preserve Unicode &amp; special characters
+              </div>
+              <div class="feature-item enabled">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Preserve line endings (LF / CRLF)
+              </div>
+              <div class="feature-item enabled">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                No artificial mistakes introduced
+              </div>
+              <div class="feature-item enabled">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                No character limit
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-label">Toggle Options</div>
+            <div class="setting-desc">Enable or disable specific behaviors</div>
+            <div class="toggle-list">
+              <div class="toggle-item">
+                <div class="toggle-info">
+                  <div class="toggle-name">Auto-scroll to target</div>
+                  <div class="toggle-desc">Scroll the page to the target field before typing starts</div>
+                </div>
+                <label class="toggle-switch" aria-label="Auto-scroll to target">
+                  <input type="checkbox" id="opt-auto-scroll" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="toggle-item">
+                <div class="toggle-info">
+                  <div class="toggle-name">Remember last text</div>
+                  <div class="toggle-desc">Restore your last entered text when reopening the popup</div>
+                </div>
+                <label class="toggle-switch" aria-label="Remember last text">
+                  <input type="checkbox" id="opt-remember-text" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Appearance -->
+      <section id="appearance" class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">Appearance</h2>
+          <p class="section-desc">Customize the visual theme of the TypeByAman interface.</p>
+        </div>
+        <div class="settings-grid">
+          <div class="setting-card">
+            <div class="setting-label">Theme</div>
+            <div class="setting-desc">Choose your preferred color scheme</div>
+            <div class="theme-options">
+              <button class="theme-option active" id="theme-dark" data-theme="dark">
+                <div class="theme-preview dark-preview">
+                  <div class="tp-header"></div>
+                  <div class="tp-body">
+                    <div class="tp-line"></div>
+                    <div class="tp-line short"></div>
+                    <div class="tp-line"></div>
+                  </div>
+                </div>
+                <span>Dark</span>
+              </button>
+              <button class="theme-option" id="theme-light" data-theme="light">
+                <div class="theme-preview light-preview">
+                  <div class="tp-header"></div>
+                  <div class="tp-body">
+                    <div class="tp-line"></div>
+                    <div class="tp-line short"></div>
+                    <div class="tp-line"></div>
+                  </div>
+                </div>
+                <span>Light</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Shortcuts -->
+      <section id="shortcuts" class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">Keyboard Shortcuts</h2>
+          <p class="section-desc">Default keyboard shortcuts for TypeByAman. Change them in Chrome's extension shortcuts settings.</p>
+        </div>
+        <div class="settings-grid">
+          <div class="setting-card">
+            <div class="shortcut-table">
+              <div class="shortcut-row">
+                <span class="shortcut-action">Start Typing</span>
+                <div class="shortcut-keys">
+                  <kbd>Alt</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>S</kbd>
+                </div>
+              </div>
+              <div class="shortcut-row">
+                <span class="shortcut-action">Pause / Resume</span>
+                <div class="shortcut-keys">
+                  <kbd>Alt</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>P</kbd>
+                </div>
+              </div>
+              <div class="shortcut-row">
+                <span class="shortcut-action">Stop Typing</span>
+                <div class="shortcut-keys">
+                  <kbd>Alt</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>X</kbd>
+                </div>
+              </div>
+            </div>
+            <a class="link-btn" href="chrome://extensions/shortcuts" target="_blank" rel="noopener">
+              Customize shortcuts in Chrome →
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- About -->
+      <section id="about" class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">About TypeByAman</h2>
+        </div>
+        <div class="settings-grid">
+          <div class="setting-card about-card-big">
+            <div class="about-big-logo">
+              <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+                <rect x="4" y="12" width="40" height="26" rx="4" stroke="url(#aog1)" stroke-width="2.5" fill="none"/>
+                <path d="M11 20h5M18 20h3M23 20h3M28 20h5M11 26h3M16 26h12M30 26h3M15 32h18" stroke="url(#aog1)" stroke-width="2" stroke-linecap="round"/>
+                <path d="M24 4v5" stroke="url(#aog1)" stroke-width="2.5" stroke-linecap="round"/>
+                <defs>
+                  <linearGradient id="aog1" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#4f8ef7"/>
+                    <stop offset="100%" stop-color="#a855f7"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <h1 class="about-big-title">TypeByAman</h1>
+            <p class="about-big-tag">Type. Replay. Create.</p>
+            <p class="about-big-ver">Version 1.0.0</p>
+
+            <div class="about-badges-row">
+              <span class="ab green">100% Free</span>
+              <span class="ab blue">Unlimited Use</span>
+              <span class="ab purple">Local Processing</span>
+              <span class="ab">No Subscription</span>
+              <span class="ab">No Account Required</span>
+              <span class="ab">No Tracking</span>
+            </div>
+
+            <div class="about-detail-grid">
+              <div class="ad-item">
+                <span class="ad-key">Created by</span>
+                <span class="ad-val">Aman Kumar</span>
+              </div>
+              <div class="ad-item">
+                <span class="ad-key">GitHub</span>
+                <a class="ad-link" href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer">github.com/Amankr0075</a>
+              </div>
+              <div class="ad-item">
+                <span class="ad-key">Privacy</span>
+                <span class="ad-val">All user text stays local. No servers. No analytics. No data collection.</span>
+              </div>
+              <div class="ad-item">
+                <span class="ad-key">License</span>
+                <span class="ad-val">MIT — Free to use, modify, and distribute.</span>
+              </div>
+            </div>
+
+            <div class="about-desc-text">
+              <p>TypeByAman is a local typing/replay utility that gradually reproduces text or source code in any supported text field or web-based editor. Perfect for coding demonstrations, programming tutorials, accessibility workflows, educational presentations, screen recordings, and testing text-input interfaces.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Save confirmation -->
+      <div class="save-toast" id="save-toast">✓ Settings saved</div>
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

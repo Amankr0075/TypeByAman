@@ -1,0 +1,71 @@
+/**
+ * TypeByAman — Status Bar Manager (VS Code)
+ * Author: Aman Kumar | github.com/Amankr0075
+ */
+
+import * as vscode from 'vscode';
+
+type Status = 'idle' | 'typing' | 'paused' | 'done' | 'error';
+
+export class StatusBarManager implements vscode.Disposable {
+  private item: vscode.StatusBarItem;
+
+  constructor() {
+    this.item = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      100
+    );
+    this.item.command = 'typebyaman.openPanel';
+    this.item.tooltip = 'TypeByAman — Click to open control panel';
+    this.setIdle();
+    this.item.show();
+  }
+
+  update(
+    status: Status,
+    charIndex: number,
+    totalChars: number,
+    delay: number
+  ): void {
+    const pct = totalChars > 0 ? Math.round((charIndex / totalChars) * 100) : 0;
+
+    const icons: Record<Status, string> = {
+      idle:   '$(keyboard)',
+      typing: '$(sync~spin)',
+      paused: '$(debug-pause)',
+      done:   '$(check)',
+      error:  '$(error)',
+    };
+
+    const labels: Record<Status, string> = {
+      idle:   'TypeByAman',
+      typing: `Typing ${charIndex.toLocaleString()}/${totalChars.toLocaleString()} (${pct}%) · ${delay}ms`,
+      paused: `Paused ${charIndex.toLocaleString()}/${totalChars.toLocaleString()} (${pct}%)`,
+      done:   `Done ${totalChars.toLocaleString()} chars`,
+      error:  'TypeByAman Error',
+    };
+
+    const colors: Partial<Record<Status, vscode.ThemeColor>> = {
+      typing: new vscode.ThemeColor('statusBarItem.prominentForeground'),
+      paused: new vscode.ThemeColor('statusBarItem.warningForeground'),
+      done:   new vscode.ThemeColor('testing.iconPassed'),
+      error:  new vscode.ThemeColor('statusBarItem.errorForeground'),
+    };
+
+    this.item.text  = `${icons[status]} ${labels[status]}`;
+    this.item.color = colors[status];
+
+    if (status === 'idle' || status === 'done') {
+      setTimeout(() => this.setIdle(), 4000);
+    }
+  }
+
+  private setIdle(): void {
+    this.item.text  = '$(keyboard) TypeByAman';
+    this.item.color = undefined;
+  }
+
+  dispose(): void {
+    this.item.dispose();
+  }
+}
