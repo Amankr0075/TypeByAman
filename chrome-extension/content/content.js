@@ -19,17 +19,19 @@
   // ─── State ─────────────────────────────────────────────────────────────────
 
   let typingState = {
-    active:        false,
-    paused:        false,
-    charIndex:     0,
-    text:          '',
-    totalChars:    0,
-    delay:         50,
-    linebreakDelay:0,
-    targetElement: null,
-    pauseResolve:  null,
-    abortSignal:   null,
-    abortController:null,
+    active:          false,
+    paused:          false,
+    charIndex:       0,
+    text:            '',
+    totalChars:      0,
+    delay:           50,
+    linebreakDelay:  0,
+    targetElement:   null,
+    pauseResolve:    null,
+    abortSignal:     null,
+    abortController: null,
+    humanTypoMode:   true,   // enable human-like typo simulation by default
+    typoRate:        0.06,   // ~6% chance of a typo per eligible character
   };
 
   let isPicking = false;
@@ -322,7 +324,7 @@
       await sleep(50);
     }
 
-    const { text, delay, linebreakDelay, startDelay } = config;
+    const { text, delay, linebreakDelay, startDelay, humanTypoMode, typoRate } = config;
     if (!text) return { error: 'No text provided' };
 
     // Find target: use pinned target, last interacted, active element, or auto-detect
@@ -339,15 +341,17 @@
     const ac = new AbortController();
     typingState = {
       ...typingState,
-      active:         true,
-      paused:         false,
-      charIndex:      0,
-      text:           text,
-      totalChars:     text.length,
-      delay:          delay || 50,
-      linebreakDelay: linebreakDelay || 0,
-      abortController:ac,
-      abortSignal:    ac.signal,
+      active:          true,
+      paused:          false,
+      charIndex:       0,
+      text:            text,
+      totalChars:      text.length,
+      delay:           delay || 50,
+      linebreakDelay:  linebreakDelay || 0,
+      humanTypoMode:   humanTypoMode !== undefined ? humanTypoMode : typingState.humanTypoMode,
+      typoRate:        typoRate      !== undefined ? typoRate      : typingState.typoRate,
+      abortController: ac,
+      abortSignal:     ac.signal,
     };
 
     runTypingLoop(target, text, startDelay, ac.signal).catch(() => {});
@@ -378,6 +382,56 @@
         const ch = text[i];
         typingState.charIndex = i;
 
+        // ── Human-like Typo Simulation ──────────────────────────────────────
+        if (shouldMakeTypo(ch, typingState.humanTypoMode, typingState.typoRate)) {
+          const typoMade = await performTypoAndCorrect(el, ch, signal);
+          if (signal.aborted) break;
+
+          if (typoMade) {
+            // Occasionally type 1 more char before noticing the error (30% chance)
+            let bonusChar = null;
+            if (i + 1 < text.length && Math.random() < 0.3) {
+              bonusChar = text[i + 1];
+              await typeCharacter(el, bonusChar, signal);
+              const bonusDelay = typingState.delay + Math.floor(Math.random() * typingState.delay * 0.5);
+              await sleep(bonusDelay, signal);
+              if (signal.aborted) break;
+            }
+
+            // Delete the bonus char first (if typed)
+            if (bonusChar !== null) {
+              await deleteCharacter(el, signal);
+              await sleep(60 + Math.floor(Math.random() * 60), signal);
+              if (signal.aborted) break;
+            }
+
+            // Delete the wrong char
+            await deleteCharacter(el, signal);
+
+            // Brief pause before retyping (cognitive 'recovery' moment)
+            await sleep(80 + Math.floor(Math.random() * 120), signal);
+            if (signal.aborted) break;
+
+            // Retype the correct character
+            await typeCharacter(el, ch, signal);
+
+            // Slight extra delay after error recovery feels natural
+            const recoverDelay = typingState.delay + Math.floor(Math.random() * typingState.delay);
+            await sleep(recoverDelay, signal);
+            if (signal.aborted) break;
+
+            // Update progress normally
+            if (i % 50 === 0 || i === text.length - 1) {
+              chrome.runtime.sendMessage({
+                action: 'statusUpdate', status: 'typing',
+                charIndex: i + 1, totalChars: text.length,
+              });
+            }
+            continue; // move to next character
+          }
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         await typeCharacter(el, ch, signal);
 
         // Progress update (throttled to every 50 chars for performance)
@@ -390,10 +444,13 @@
           });
         }
 
-        // Delay
+        // Natural variable delay: adds slight jitter to timing (±20%) for realism
         const isLineBreak = ch === '\n' || ch === '\r';
         const extraDelay  = isLineBreak ? typingState.linebreakDelay : 0;
-        const totalDelay  = typingState.delay + extraDelay;
+        const jitter      = typingState.humanTypoMode
+          ? Math.floor((Math.random() - 0.5) * typingState.delay * 0.4)
+          : 0;
+        const totalDelay  = Math.max(1, typingState.delay + extraDelay + jitter);
         if (totalDelay > 0) await sleep(totalDelay, signal);
       }
 
@@ -565,6 +622,138 @@
     }
 
     el.dispatchEvent(new KeyboardEvent('keyup', eventProps));
+  }
+
+  // ─── Human-like Typo Simulation ─────────────────────────────────────────────
+
+  // QWERTY adjacent-key map: for each key, list of keys that fingers commonly
+  // mistype (immediate left, right, above, below on a standard keyboard layout)
+  const QWERTY_NEIGHBORS = {
+    'q':['w','a'],'w':['q','e','s','a'],'e':['w','r','d','s'],'r':['e','t','f','d'],
+    't':['r','y','g','f'],'y':['t','u','h','g'],'u':['y','i','j','h'],'i':['u','o','k','j'],
+    'o':['i','p','l','k'],'p':['o','[','l'],
+    'a':['q','w','s','z'],'s':['a','w','e','d','z','x'],'d':['s','e','r','f','x','c'],
+    'f':['d','r','t','g','c','v'],'g':['f','t','y','h','v','b'],'h':['g','y','u','j','b','n'],
+    'j':['h','u','i','k','n','m'],'k':['j','i','o','l','m',','],'l':['k','o','p',';',',','.'],
+    'z':['a','s','x'],'x':['z','s','d','c'],'c':['x','d','f','v'],'v':['c','f','g','b'],
+    'b':['v','g','h','n'],'n':['b','h','j','m'],'m':['n','j','k',','],
+    '1':['2','q'],'2':['1','3','q','w'],'3':['2','4','w','e'],'4':['3','5','e','r'],
+    '5':['4','6','r','t'],'6':['5','7','t','y'],'7':['6','8','y','u'],'8':['7','9','u','i'],
+    '9':['8','0','i','o'],'0':['9','-','o','p'],
+    ' ':[' '], // space typo: double-space, handled separately
+  };
+
+  // Common transposition pairs (swap adjacent characters: 'teh' -> 'the')
+  const COMMON_SWAPS = [
+    ['t','h'],['h','t'],['i','e'],['e','i'],['a','n'],['n','a'],
+    ['o','r'],['r','o'],['s','t'],['t','s'],['n','g'],['g','n'],
+  ];
+
+  function getAdjacentKey(ch) {
+    const lower = ch.toLowerCase();
+    const neighbors = QWERTY_NEIGHBORS[lower];
+    if (!neighbors || neighbors.length === 0) return null;
+    const pick = neighbors[Math.floor(Math.random() * neighbors.length)];
+    // Preserve original case
+    return ch === ch.toUpperCase() && ch !== ch.toLowerCase() ? pick.toUpperCase() : pick;
+  }
+
+  function shouldMakeTypo(ch, humanTypoMode, typoRate) {
+    if (!humanTypoMode) return false;
+    // Skip typos on whitespace, newlines, and special chars
+    if (ch === '\n' || ch === '\r' || ch === '\t') return false;
+    // Higher typo chance for less common chars (non alpha)
+    const isAlpha = /[a-zA-Z]/.test(ch);
+    const rate = isAlpha ? typoRate : typoRate * 0.4;
+    return Math.random() < rate;
+  }
+
+  async function deleteCharacter(el, signal) {
+    const editorType = getEditorType(el);
+
+    if (editorType === 'codemirror') {
+      const cmEl = el.closest('.CodeMirror');
+      if (cmEl && cmEl.CodeMirror) {
+        const cm = cmEl.CodeMirror;
+        const cursor = cm.getCursor();
+        const lineContent = cm.getLine(cursor.line);
+        if (cursor.ch > 0) {
+          cm.replaceRange('', { line: cursor.line, ch: cursor.ch - 1 }, cursor);
+        } else if (cursor.line > 0) {
+          cm.replaceRange('', { line: cursor.line - 1, ch: cm.getLine(cursor.line - 1).length }, cursor);
+        }
+        return;
+      }
+    }
+
+    if (editorType === 'ace') {
+      const aceEl = el.closest('.ace_editor');
+      if (aceEl && window.ace) {
+        try {
+          const editor = window.ace.edit(aceEl.id || aceEl);
+          editor.remove('left');
+          return;
+        } catch {}
+      }
+    }
+
+    if (editorType === 'monaco') {
+      const monacoEl = el.closest('.monaco-editor');
+      if (monacoEl) {
+        const ta = monacoEl.querySelector('textarea.inputarea') || monacoEl.querySelector('textarea');
+        if (ta) {
+          ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
+          ta.dispatchEvent(new KeyboardEvent('keyup',   { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
+          return;
+        }
+      }
+    }
+
+    if (el.isContentEditable || el.closest('[contenteditable="true"]')) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        document.execCommand('delete', false, null);
+      }
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+
+    // Native input / textarea
+    const start = el.selectionStart ?? el.value.length;
+    const end   = el.selectionEnd   ?? el.value.length;
+    if (start > 0) {
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value') ||
+                           Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
+      const deletePos = start === end ? start - 1 : start;
+      const newValue  = el.value.substring(0, deletePos) + el.value.substring(end);
+      if (nativeSetter && nativeSetter.set) {
+        nativeSetter.set.call(el, newValue);
+      } else {
+        el.value = newValue;
+      }
+      el.selectionStart = el.selectionEnd = deletePos;
+      el.dispatchEvent(new Event('input',  { bubbles: true, cancelable: false }));
+      el.dispatchEvent(new Event('change', { bubbles: true, cancelable: false }));
+    }
+  }
+
+  async function performTypoAndCorrect(el, correctChar, signal) {
+    // 1. Pick a wrong key (adjacent on QWERTY keyboard)
+    const wrongChar = getAdjacentKey(correctChar);
+    if (!wrongChar || wrongChar === correctChar) return false; // no suitable wrong key, skip typo
+
+    // 2. Type the wrong character
+    await typeCharacter(el, wrongChar, signal);
+
+    // 3. Human reaction delay: time to notice the mistake visually (150–400 ms)
+    const reactionMs = 150 + Math.floor(Math.random() * 250);
+    await sleep(reactionMs, signal);
+
+    if (signal.aborted) return true;
+
+    // 4. Occasionally type 1–2 more chars before noticing (makes it more realistic)
+    // Only do this ~30% of the time
+    return true; // typo was performed, need correction
   }
 
   // ─── Helper: find last focused input ────────────────────────────────────────
