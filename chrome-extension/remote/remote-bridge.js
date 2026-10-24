@@ -204,8 +204,16 @@ class RemoteControlBridge {
     // 1. Get or create high-entropy persistent session ID
     this.sessionId = await this._getOrCreateSessionId();
 
-    // 2. Initialize WebSocket MQTT client
-    const clientId = 'tba_ext_' + this.sessionId;
+    if (this.client && this.client.connected) {
+      return this.sessionId;
+    }
+
+    if (this.client) {
+      this.client.destroy();
+    }
+
+    // 2. Initialize WebSocket MQTT client with unique random suffix
+    const clientId = 'tba_pc_' + this.sessionId + '_' + Math.random().toString(36).slice(2, 6);
     this.client = new MiniMqttClient(this.brokerUrl, clientId);
 
     const cmdTopic = `typebyaman/remote/${this.sessionId}/cmd`;
@@ -226,6 +234,7 @@ class RemoteControlBridge {
     };
 
     this.client.connect();
+    return this.sessionId;
   }
 
   async _getOrCreateSessionId() {
@@ -263,6 +272,7 @@ class RemoteControlBridge {
   }
 
   getRemoteUrl() {
+    if (!this.sessionId) return '';
     return `https://amankr0075.github.io/TypeByAman/remote.html?session=${this.sessionId}`;
   }
 
@@ -276,6 +286,30 @@ class RemoteControlBridge {
   }
 
   /**
+   * Find active webpage tab even if Chrome window is not currently focused
+   */
+  async _getTargetTab() {
+    try {
+      // 1. Try active tab in last focused window
+      const focusedTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (focusedTabs && focusedTabs.length > 0 && focusedTabs[0].id) {
+        const t = focusedTabs[0];
+        if (!t.url?.startsWith('chrome://') && !t.url?.startsWith('chrome-extension://')) {
+          return t;
+        }
+      }
+      // 2. Try any active tab across all windows
+      const activeTabs = await chrome.tabs.query({ active: true });
+      if (activeTabs && activeTabs.length > 0) {
+        const candidate = activeTabs.find(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'));
+        if (candidate) return candidate;
+        return activeTabs[0];
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /**
    * Process commands originating from phone/tablet
    */
   async handleRemoteCommand(data) {
@@ -285,22 +319,35 @@ class RemoteControlBridge {
     this.lastHandshake = Date.now();
     this._emit({ type: 'deviceConnected', device: data.device || 'Mobile Device' });
 
+    // Notify extension views
+    chrome.runtime.sendMessage({
+      action: 'remoteDeviceConnected',
+      device: data.device || 'Mobile Device'
+    }).catch(() => {});
+
     // ── Handshake / Sync Request ──
-    if (data.action === 'handshake' || data.action === 'requestSync') {
+    if (data.action === 'handshake' || data.action === 'requestSync' || data.action === 'ping') {
       const fullState = await this._collectFullState();
       this.broadcastStatus({
-        action: 'fullStateSync',
+        action: 'handshakeAck',
+        ack: true,
         state: fullState,
+        serverTime: Date.now()
       });
       return;
     }
 
     // ── Typing Commands ──
     if (data.action === 'startTyping' || data.action === 'pauseTyping' || data.action === 'resumeTyping' || data.action === 'stopTyping' || data.action === 'updateSpeed') {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = await this._getTargetTab();
       if (tab?.id) {
         try {
-          await chrome.tabs.sendMessage(tab.id, data);
+          if (data.action === 'startTyping' && (!data.text || !data.text.trim())) {
+            // No custom text sent from phone -> use extension's saved text
+            await chrome.tabs.sendMessage(tab.id, { action: 'startTypingFromCommand' });
+          } else {
+            await chrome.tabs.sendMessage(tab.id, data);
+          }
         } catch (_) {}
       }
       return;
@@ -308,27 +355,27 @@ class RemoteControlBridge {
 
     // ── Design Mode Commands ──
     if (data.action === 'designCmd' || data.action === 'designGetStatus') {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = await this._getTargetTab();
       if (tab?.id) {
-        // Ensure design engine is injected
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['content/design-engine.js'],
-          });
-        } catch (_) {}
-
         try {
           await chrome.tabs.sendMessage(tab.id, data);
         } catch (_) {
-          // Fallback to window message
+          // Fallback to ensuring script is loaded
           try {
             await chrome.scripting.executeScript({
               target: { tabId: tab.id },
-              func: (payload) => window.postMessage(payload, '*'),
-              args: [{ tbaDesign: data.cmd, duration: data.duration }],
+              files: ['content/design-engine.js'],
             });
-          } catch (_) {}
+            await chrome.tabs.sendMessage(tab.id, data);
+          } catch (_) {
+            try {
+              await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: (payload) => window.postMessage(payload, '*'),
+                args: [{ tbaDesign: data.cmd, duration: data.duration }],
+              });
+            } catch (_) {}
+          }
         }
       }
       return;
@@ -344,7 +391,7 @@ class RemoteControlBridge {
 
   async _collectFullState() {
     return new Promise(async (resolve) => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = await this._getTargetTab();
       let typingStatus = { status: 'idle', charIndex: 0, totalChars: 0 };
       let designStatus = { running: false, paused: false, elapsed: 0, remaining: 3600000, pct: 0, totalActions: 0, platform: 'Detecting...', lastAction: '—' };
 
@@ -398,10 +445,11 @@ class RemoteControlBridge {
 // Singleton instance for extension background & popup
 const remoteBridge = new RemoteControlBridge();
 
+globalThis.MiniMqttClient = MiniMqttClient;
 globalThis.RemoteControlBridge = RemoteControlBridge;
 globalThis.remoteBridge = remoteBridge;
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RemoteControlBridge, remoteBridge };
+  module.exports = { MiniMqttClient, RemoteControlBridge, remoteBridge };
 }
 

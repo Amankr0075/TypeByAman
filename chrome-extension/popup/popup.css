@@ -1504,10 +1504,10 @@ body.is-typing .app-header::after {
 
 .qr-wrapper {
   position: relative;
-  padding: 12px;
+  padding: 16px;
   background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1518,48 +1518,24 @@ body.is-typing .app-header::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 170px;
-  min-height: 170px;
+  min-width: 220px;
+  min-height: 220px;
+}
+
+.qr-canvas {
+  display: block;
+  width: 220px !important;
+  height: 220px !important;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .qr-code-box svg {
   display: block;
-  width: 170px;
-  height: 170px;
-}
-
-/* Futuristic corner markers */
-.qr-corner {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: #3b82f6;
-  border-style: solid;
-  pointer-events: none;
-}
-.qr-corner.top-left {
-  top: -3px;
-  left: -3px;
-  border-width: 2.5px 0 0 2.5px;
-  border-top-left-radius: 6px;
-}
-.qr-corner.top-right {
-  top: -3px;
-  right: -3px;
-  border-width: 2.5px 2.5px 0 0;
-  border-top-right-radius: 6px;
-}
-.qr-corner.bottom-left {
-  bottom: -3px;
-  left: -3px;
-  border-width: 0 0 2.5px 2.5px;
-  border-bottom-left-radius: 6px;
-}
-.qr-corner.bottom-right {
-  bottom: -3px;
-  right: -3px;
-  border-width: 0 2.5px 2.5px 0;
-  border-bottom-right-radius: 6px;
+  width: 220px;
+  height: 220px;
+  shape-rendering: crispEdges;
 }
 
 .qr-meta {

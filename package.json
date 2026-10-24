@@ -10,5 +10,10 @@
     "compile": "cd vscode-extension && npm run compile",
     "package:vscode": "cd vscode-extension && npm run package",
     "test": "echo \"All components verified.\""
+  },
+  "dependencies": {
+    "jsqr": "^1.4.0",
+    "qrcode": "^1.5.4",
+    "qrcode-generator": "^2.0.4"
   }
 }

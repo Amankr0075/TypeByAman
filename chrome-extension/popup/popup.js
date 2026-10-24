@@ -893,36 +893,56 @@ const remoteUI = {
 
 function renderQRCode(url) {
   if (!remoteUI.qrContainer || !url) return;
-  if (typeof QRCode !== 'undefined' && typeof QRCode.toSVG === 'function') {
-    remoteUI.qrContainer.innerHTML = QRCode.toSVG(url, {
-      size: 170,
-      color: '#0f172a',
-      background: '#ffffff',
-      margin: 1,
-    });
-  } else {
-    remoteUI.qrContainer.textContent = 'Generating QR...';
+  remoteUI.qrContainer.innerHTML = '';
+
+  if (typeof QRCode !== 'undefined') {
+    // Render high-contrast pixelated canvas with ISO-compliant quiet zone
+    if (typeof QRCode.drawCanvas === 'function') {
+      const canvas = document.createElement('canvas');
+      canvas.className = 'qr-canvas';
+      remoteUI.qrContainer.appendChild(canvas);
+      QRCode.drawCanvas(canvas, url, {
+        cellSize: 5,
+        margin: 4,
+        width: 220,
+        height: 220,
+        color: '#000000',
+        background: '#ffffff',
+      });
+      return;
+    }
+
+    if (typeof QRCode.toSVG === 'function') {
+      remoteUI.qrContainer.innerHTML = QRCode.toSVG(url, {
+        cellSize: 5,
+        margin: 4,
+      });
+      return;
+    }
   }
+
+  remoteUI.qrContainer.textContent = 'Generating QR...';
 }
 
 async function loadRemoteSession() {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ action: 'getRemoteUrl' }, (response) => {
-      if (response && response.url) {
-        currentRemoteUrl = response.url;
-        currentRemoteSessionId = response.sessionId;
-        if (remoteUI.sessionText) remoteUI.sessionText.textContent = response.sessionId;
-        renderQRCode(response.url);
-        if (response.connected) {
+    chrome.runtime.sendMessage({ action: 'getRemoteUrl' }, async (response) => {
+      let url = response?.url;
+      let sessionId = response?.sessionId;
+
+      if ((!url || !sessionId) && typeof globalThis.remoteBridge !== 'undefined') {
+        sessionId = await globalThis.remoteBridge.init();
+        url = globalThis.remoteBridge.getRemoteUrl();
+      }
+
+      if (url && sessionId) {
+        currentRemoteUrl = url;
+        currentRemoteSessionId = sessionId;
+        if (remoteUI.sessionText) remoteUI.sessionText.textContent = sessionId;
+        renderQRCode(url);
+        if (response?.connected) {
           setRemoteConnected(true);
         }
-      } else if (typeof globalThis.remoteBridge !== 'undefined') {
-        const url = globalThis.remoteBridge.getRemoteUrl();
-        const sid = globalThis.remoteBridge.sessionId;
-        currentRemoteUrl = url;
-        currentRemoteSessionId = sid;
-        if (remoteUI.sessionText) remoteUI.sessionText.textContent = sid;
-        renderQRCode(url);
       }
       resolve();
     });

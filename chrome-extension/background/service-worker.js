@@ -62,6 +62,19 @@ if (remoteBridge) {
   });
 }
 
+// ─── Service Worker Keepalive Alarm ──────────────────────────────────────────
+
+try {
+  chrome.alarms.create('tba_remote_keepalive', { periodInMinutes: 0.4 }); // ~24s keepalive
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'tba_remote_keepalive') {
+      if (remoteBridge && (!remoteBridge.client || !remoteBridge.client.connected)) {
+        remoteBridge.init().catch(() => {});
+      }
+    }
+  });
+} catch (_) {}
+
 // ─── Message Relay ──────────────────────────────────────────────────────────
 
 /**
@@ -71,12 +84,21 @@ if (remoteBridge) {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // Remote bridge request handlers from popup
   if (msg.action === 'getRemoteUrl') {
-    sendResponse({
-      url: remoteBridge ? remoteBridge.getRemoteUrl() : '',
-      sessionId: remoteBridge ? remoteBridge.sessionId : '',
-      connected: remoteBridge ? remoteBridge.remoteDeviceConnected : false,
-    });
-    return false;
+    (async () => {
+      try {
+        if (!remoteBridge || !remoteBridge.sessionId) {
+          await remoteBridge.init();
+        }
+        sendResponse({
+          url: remoteBridge ? remoteBridge.getRemoteUrl() : '',
+          sessionId: remoteBridge ? remoteBridge.sessionId : '',
+          connected: remoteBridge ? remoteBridge.remoteDeviceConnected : false,
+        });
+      } catch (err) {
+        sendResponse({ error: err.message });
+      }
+    })();
+    return true; // Keep channel open for async response
   }
 
   if (msg.action === 'regenerateRemoteSession') {
