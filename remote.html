@@ -6,6 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>TypeByAman — Mobile Remote Control & Settings</title>
   <meta name="description" content="Control TypeByAman Chrome Extension remotely from any phone or device." />
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TypeByAman">
+  <link rel="apple-touch-icon" href="assets/icon128.png">
+  <link rel="icon" type="image/png" href="assets/icon48.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -985,6 +993,351 @@
     .dev-divider {
       color: rgba(255, 255, 255, 0.2);
     }
+
+    /* Header Action Buttons */
+    .header-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .header-scan-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(139, 92, 246, 0.25));
+      border: 1px solid rgba(96, 165, 250, 0.45);
+      color: #93c5fd;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+    }
+
+    .header-scan-btn:hover,
+    .header-scan-btn:active {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: #fff;
+      transform: scale(1.04);
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+    }
+
+    .header-install-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2));
+      border: 1px solid rgba(52, 211, 153, 0.45);
+      color: #6ee7b7;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .header-install-btn:hover,
+    .header-install-btn:active {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      transform: scale(1.04);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Quick Scan Prompt Card */
+    .scanner-quick-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: var(--radius);
+      padding: 13px 15px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .scanner-card-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .scanner-cam-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .scanner-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.2px;
+    }
+
+    .scanner-card-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .scanner-card-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .scanner-card-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* ══════ Fullscreen Inbuilt Camera Scanner Modal ══════ */
+    .scanner-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .scanner-modal-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(3, 7, 18, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .scanner-modal-content {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 440px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 35px rgba(59, 130, 246, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .scanner-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .scanner-modal-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .scanner-close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .scanner-close-btn:hover,
+    .scanner-close-btn:active {
+      color: #fff;
+      background: rgba(239, 68, 68, 0.25);
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+
+    /* Camera Viewport */
+    .camera-viewport-wrap {
+      position: relative;
+      width: 100%;
+      height: 290px;
+      background: #020617;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1.5px solid rgba(59, 130, 246, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #qr-camera-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Viewfinder Reticle & Holographic Target */
+    .viewfinder-box {
+      position: absolute;
+      width: 190px;
+      height: 190px;
+      border-radius: 12px;
+      pointer-events: none;
+      box-shadow: 0 0 0 9999px rgba(3, 7, 18, 0.45);
+    }
+
+    .vf-corner {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 3.5px solid #38bdf8;
+      border-radius: 4px;
+    }
+
+    .vf-tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+    .vf-tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+    .vf-bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+    .vf-br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+    .laser-sweep-line {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      height: 2.5px;
+      background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent);
+      box-shadow: 0 0 12px #38bdf8, 0 0 20px #818cf8;
+      animation: laserSweep 2s ease-in-out infinite alternate;
+      border-radius: 2px;
+    }
+
+    @keyframes laserSweep {
+      0%   { top: 8px; opacity: 0.85; }
+      100% { top: 180px; opacity: 0.85; }
+    }
+
+    .scanner-feedback-badge {
+      position: absolute;
+      bottom: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+      backdrop-filter: blur(8px);
+      letter-spacing: 0.2px;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .scanner-feedback-badge.success {
+      background: rgba(16, 185, 129, 0.9);
+      color: #fff;
+      border-color: #34d399;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+    }
+
+    /* Scanner Controls Bar */
+    .scanner-controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .scanner-action-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .scanner-action-btn:hover,
+    .scanner-action-btn:active {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .manual-input-panel {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .manual-input-field {
+      flex: 1;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 12px;
+      font-family: var(--mono);
+      outline: none;
+    }
+
+    .manual-input-field:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-glow);
+    }
   </style>
 </head>
 
@@ -1010,6 +1363,24 @@
       </div>
     </div>
     <div class="header-right">
+      <button class="header-scan-btn" id="btn-open-scanner" title="Scan QR Code with Camera">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+          <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+          <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+          <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>Scan QR</span>
+      </button>
+      <button class="header-install-btn" id="btn-install-pwa" style="display:none;" title="Install App">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>Install</span>
+      </button>
       <a href="https://github.com/Amankr0075/TypeByAman" target="_blank" rel="noopener noreferrer"
         class="header-star-btn" title="Star on GitHub">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
@@ -1053,6 +1424,31 @@
   </div>
 
   <div class="container">
+
+    <!-- Quick Scan Helper Card -->
+    <div class="scanner-quick-card" id="scanner-quick-card">
+      <div class="scanner-card-left">
+        <div class="scanner-cam-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <div class="scanner-card-text">
+          <div class="scanner-card-title">Connect via Camera</div>
+          <div class="scanner-card-desc">Scan extension QR code to link device instantly</div>
+        </div>
+      </div>
+      <button class="scanner-card-btn" id="btn-card-scan">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+          <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+          <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+          <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+        </svg>
+        <span>Scan QR</span>
+      </button>
+    </div>
 
     <!-- ════════════ PANEL: TYPING ════════════ -->
     <div id="panel-typing" class="panel active">
@@ -1236,6 +1632,40 @@
         </div>
       </div>
 
+      <!-- Cursor Movement Speed Presets -->
+      <div class="card">
+        <div class="card-title">
+          <span>Cursor Movement Speed</span>
+          <span class="session-badge" id="design-cursor-speed-badge">Normal (1.0x)</span>
+        </div>
+        <div class="chip-group" id="design-cursor-speed-chips">
+          <button class="chip" data-speed="slow">Slow (0.6x)</button>
+          <button class="chip active" data-speed="normal">Normal (1.0x)</button>
+          <button class="chip" data-speed="fast">Fast (1.8x)</button>
+          <button class="chip" data-speed="very-fast">Very Fast (2.8x)</button>
+        </div>
+        <div class="range-row">
+          <input type="range" min="0.4" max="3.5" step="0.1" value="1.0" class="range-input" id="remote-cursor-speed-slider">
+        </div>
+      </div>
+
+      <!-- Operations Speed Presets -->
+      <div class="card">
+        <div class="card-title">
+          <span>Operations Speed</span>
+          <span class="session-badge" id="design-op-speed-badge">Normal (1.0x)</span>
+        </div>
+        <div class="chip-group" id="design-op-speed-chips">
+          <button class="chip" data-speed="slow">Slow (0.6x)</button>
+          <button class="chip active" data-speed="normal">Normal (1.0x)</button>
+          <button class="chip" data-speed="fast">Fast (1.8x)</button>
+          <button class="chip" data-speed="very-fast">Turbo (3.0x)</button>
+        </div>
+        <div class="range-row">
+          <input type="range" min="0.4" max="4.0" step="0.1" value="1.0" class="range-input" id="remote-op-speed-slider">
+        </div>
+      </div>
+
     </div>
 
     <!-- ════════════ PANEL: SETTINGS ════════════ -->
@@ -1351,8 +1781,62 @@
       </div>
     </footer>
 
+    <!-- Inbuilt Camera QR Scanner Modal -->
+    <div class="scanner-modal" id="qr-scanner-modal" style="display:none;" aria-hidden="true">
+      <div class="scanner-modal-backdrop" id="scanner-modal-backdrop"></div>
+      <div class="scanner-modal-content">
+        <div class="scanner-modal-header">
+          <div class="scanner-modal-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span>Scan Extension QR Code</span>
+          </div>
+          <button class="scanner-close-btn" id="btn-close-scanner" aria-label="Close Scanner">✕</button>
+        </div>
+
+        <div class="camera-viewport-wrap" id="camera-viewport-wrap">
+          <video id="qr-camera-video" playsinline muted autoplay></video>
+          <canvas id="qr-hidden-canvas" style="display:none;"></canvas>
+          <div class="viewfinder-box">
+            <span class="vf-corner vf-tl"></span>
+            <span class="vf-corner vf-tr"></span>
+            <span class="vf-corner vf-bl"></span>
+            <span class="vf-corner vf-br"></span>
+            <div class="laser-sweep-line"></div>
+          </div>
+          <div class="scanner-feedback-badge" id="scanner-feedback-badge">Point at extension QR code</div>
+        </div>
+
+        <div class="scanner-controls-bar">
+          <button class="scanner-action-btn" id="btn-switch-camera">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            <span>Flip Camera</span>
+          </button>
+          <button class="scanner-action-btn" id="btn-toggle-torch">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            <span id="lbl-torch">Torch</span>
+          </button>
+        </div>
+
+        <div class="manual-input-panel">
+          <input type="text" class="manual-input-field" id="input-manual-session" placeholder="Or enter Session ID (e.g. tba-8x2b)" />
+          <button class="scanner-card-btn" id="btn-apply-manual-session">Connect</button>
+        </div>
+      </div>
+    </div>
+
     <div id="toast">Connected</div>
 
+    <!-- jsQR Library fallback for iOS Safari and browsers without native BarcodeDetector -->
+    <script src="lib/jsqr.js"></script>
     <script>
       'use strict';
 
@@ -1517,10 +2001,31 @@
         });
       });
 
+      // Audio Chime Feedback
+      function playSuccessChime() {
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const now = ctx.currentTime;
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.exponentialRampToValueAtTime(1760, now + 0.12);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        } catch (_) { }
+      }
+
       // Remote MQTT Connection
       const client = new MobileMqttClient('wss://broker.emqx.io:8084/mqtt', 'tba_phone_' + Math.random().toString(36).slice(2, 8));
-      const cmdTopic = `typebyaman/remote/${sessionId}/cmd`;
-      const statusTopic = `typebyaman/remote/${sessionId}/status`;
+      let cmdTopic = `typebyaman/remote/${sessionId}/cmd`;
+      let statusTopic = `typebyaman/remote/${sessionId}/status`;
 
       const badge = document.getElementById('conn-status-badge');
       const badgeText = document.getElementById('conn-status-text');
@@ -1544,6 +2049,37 @@
           device: 'Phone Controller',
           time: Date.now()
         });
+      }
+
+      function switchSession(newSessionId) {
+        if (!newSessionId) return;
+        newSessionId = newSessionId.trim();
+        if (newSessionId === sessionId && pcConnected) return;
+        sessionId = newSessionId;
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('session', sessionId);
+        window.history.replaceState({}, '', newUrl.toString());
+
+        cmdTopic = `typebyaman/remote/${sessionId}/cmd`;
+        statusTopic = `typebyaman/remote/${sessionId}/status`;
+
+        document.getElementById('session-tag').textContent = sessionId;
+        pcConnected = false;
+        setConnectionState('connecting', 'Linking PC...');
+
+        client.subscribe(statusTopic);
+        sendHandshake();
+
+        clearInterval(handshakeTimer);
+        handshakeTimer = setInterval(() => {
+          if (!pcConnected) {
+            sendHandshake();
+          }
+        }, 1500);
+
+        showToast(`Connected: ${sessionId}`);
+        vibrate([40, 60, 100]);
+        playSuccessChime();
       }
 
       client.onConnect = () => {
@@ -1573,6 +2109,8 @@
             clearInterval(handshakeTimer);
             setConnectionState('connected', 'Linked to PC');
             showToast('✓ Linked to Extension');
+            const qc = document.getElementById('scanner-quick-card');
+            if (qc) qc.style.display = 'none';
           }
           lastPcActivity = Date.now();
           handleDesktopStatus(msg);
@@ -1694,6 +2232,14 @@
         const card = document.getElementById('design-card');
         if (orbit) orbit.classList.toggle('active', running);
         if (card) card.classList.toggle('is-active', running);
+
+        // Sync speeds if received from desktop
+        if (d.cursorSpeed !== undefined) {
+          syncRemoteCursorSpeedUI(d.cursorSpeed);
+        }
+        if (d.operationSpeed !== undefined) {
+          syncRemoteOpSpeedUI(d.operationSpeed);
+        }
       }
 
       function updateSettingsUI(s) {
@@ -1713,6 +2259,12 @@
         if (s.startDelay !== undefined) {
           document.getElementById('set-start-delay').value = s.startDelay;
           document.getElementById('lbl-start-delay').textContent = s.startDelay + ' s';
+        }
+        if (s.designCursorSpeed !== undefined) {
+          syncRemoteCursorSpeedUI(s.designCursorSpeed);
+        }
+        if (s.designOperationSpeed !== undefined) {
+          syncRemoteOpSpeedUI(s.designOperationSpeed);
         }
       }
 
@@ -1749,6 +2301,7 @@
       // Speed Preset Chips
       document.querySelectorAll('#speed-chip-group .chip').forEach(chip => {
         chip.addEventListener('click', () => {
+          vibrate(20);
           document.querySelectorAll('#speed-chip-group .chip').forEach(c => c.classList.remove('active'));
           chip.classList.add('active');
           const delay = parseInt(chip.dataset.delay, 10);
@@ -1783,9 +2336,116 @@
 
       // ─── Design Actions -> Send to Desktop ────────────────────────────────────
       let selectedDesignDuration = 3600000;
+      let selectedCursorSpeed = 'normal';
+      let selectedOperationSpeed = 'normal';
+
+      const REMOTE_CURSOR_LABELS = {
+        'slow': 'Slow (0.6x)',
+        'normal': 'Normal (1.0x)',
+        'fast': 'Fast (1.8x)',
+        'very-fast': 'Very Fast (2.8x)'
+      };
+
+      const REMOTE_OP_LABELS = {
+        'slow': 'Slow (0.6x)',
+        'normal': 'Normal (1.0x)',
+        'fast': 'Fast (1.8x)',
+        'very-fast': 'Turbo (3.0x)'
+      };
+
+      function syncRemoteCursorSpeedUI(speed) {
+        selectedCursorSpeed = speed;
+        const badge = document.getElementById('design-cursor-speed-badge');
+        const slider = document.getElementById('remote-cursor-speed-slider');
+        if (typeof speed === 'string' && REMOTE_CURSOR_LABELS[speed]) {
+          if (badge) badge.textContent = REMOTE_CURSOR_LABELS[speed];
+          if (slider) slider.value = speed === 'slow' ? 0.6 : (speed === 'normal' ? 1.0 : (speed === 'fast' ? 1.8 : 2.8));
+        } else {
+          const num = typeof speed === 'number' ? speed : parseFloat(speed) || 1.0;
+          if (badge) badge.textContent = `${num.toFixed(1)}x`;
+          if (slider) slider.value = num;
+        }
+        document.querySelectorAll('#design-cursor-speed-chips .chip').forEach(c => {
+          c.classList.toggle('active', c.dataset.speed === speed);
+        });
+      }
+
+      function syncRemoteOpSpeedUI(speed) {
+        selectedOperationSpeed = speed;
+        const badge = document.getElementById('design-op-speed-badge');
+        const slider = document.getElementById('remote-op-speed-slider');
+        if (typeof speed === 'string' && REMOTE_OP_LABELS[speed]) {
+          if (badge) badge.textContent = REMOTE_OP_LABELS[speed];
+          if (slider) slider.value = speed === 'slow' ? 0.6 : (speed === 'normal' ? 1.0 : (speed === 'fast' ? 1.8 : 3.0));
+        } else {
+          const num = typeof speed === 'number' ? speed : parseFloat(speed) || 1.0;
+          if (badge) badge.textContent = `${num.toFixed(1)}x`;
+          if (slider) slider.value = num;
+        }
+        document.querySelectorAll('#design-op-speed-chips .chip').forEach(c => {
+          c.classList.toggle('active', c.dataset.speed === speed);
+        });
+      }
+
+      // Cursor Speed Chips
+      document.querySelectorAll('#design-cursor-speed-chips .chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          vibrate(20);
+          document.querySelectorAll('#design-cursor-speed-chips .chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          const sp = chip.dataset.speed;
+          syncRemoteCursorSpeedUI(sp);
+          client.publish(cmdTopic, { action: 'designUpdateSpeed', cursorSpeed: sp });
+          showToast(`Cursor: ${REMOTE_CURSOR_LABELS[sp] || sp}`);
+        });
+      });
+
+      // Cursor Speed Slider
+      const remoteCursorSlider = document.getElementById('remote-cursor-speed-slider');
+      if (remoteCursorSlider) {
+        remoteCursorSlider.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          syncRemoteCursorSpeedUI(val);
+        });
+        remoteCursorSlider.addEventListener('change', (e) => {
+          const val = parseFloat(e.target.value);
+          syncRemoteCursorSpeedUI(val);
+          client.publish(cmdTopic, { action: 'designUpdateSpeed', cursorSpeed: val });
+          showToast(`Cursor: ${val.toFixed(1)}x`);
+        });
+      }
+
+      // Operation Speed Chips
+      document.querySelectorAll('#design-op-speed-chips .chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          vibrate(20);
+          document.querySelectorAll('#design-op-speed-chips .chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          const sp = chip.dataset.speed;
+          syncRemoteOpSpeedUI(sp);
+          client.publish(cmdTopic, { action: 'designUpdateSpeed', operationSpeed: sp });
+          showToast(`Operation: ${REMOTE_OP_LABELS[sp] || sp}`);
+        });
+      });
+
+      // Operation Speed Slider
+      const remoteOpSlider = document.getElementById('remote-op-slider');
+      if (remoteOpSlider) {
+        remoteOpSlider.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          syncRemoteOpSpeedUI(val);
+        });
+        remoteOpSlider.addEventListener('change', (e) => {
+          const val = parseFloat(e.target.value);
+          syncRemoteOpSpeedUI(val);
+          client.publish(cmdTopic, { action: 'designUpdateSpeed', operationSpeed: val });
+          showToast(`Operation: ${val.toFixed(1)}x`);
+        });
+      }
 
       document.querySelectorAll('#design-duration-chips .chip').forEach(chip => {
         chip.addEventListener('click', () => {
+          vibrate(20);
           document.querySelectorAll('#design-duration-chips .chip').forEach(c => c.classList.remove('active'));
           chip.classList.add('active');
           selectedDesignDuration = parseInt(chip.dataset.duration, 10);
@@ -1794,7 +2454,13 @@
       });
 
       document.getElementById('btn-design-start').addEventListener('click', () => {
-        client.publish(cmdTopic, { action: 'designCmd', cmd: 'start', duration: selectedDesignDuration });
+        client.publish(cmdTopic, {
+          action: 'designCmd',
+          cmd: 'start',
+          duration: selectedDesignDuration,
+          cursorSpeed: selectedCursorSpeed,
+          operationSpeed: selectedOperationSpeed,
+        });
         showToast('🎨 Sent: Start Design Mode');
       });
 
@@ -1832,6 +2498,264 @@
         client.publish(cmdTopic, { action: 'saveSettings', settings });
         showToast('✓ Settings Synced to PC');
       });
+
+      // ─── Inbuilt Camera QR Scanner Controller ────────────────────────────────
+      let cameraStream = null;
+      let currentFacingMode = 'environment';
+      let isScanning = false;
+      let scanAnimFrameId = null;
+      let torchActive = false;
+
+      let barcodeDetector = null;
+      if ('BarcodeDetector' in window) {
+        try {
+          barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        } catch (_) {
+          barcodeDetector = null;
+        }
+      }
+
+      function parseSessionFromQr(rawText) {
+        if (!rawText) return null;
+        const str = rawText.trim();
+        try {
+          if (str.startsWith('http://') || str.startsWith('https://')) {
+            const u = new URL(str);
+            const s = u.searchParams.get('session') || u.searchParams.get('sid');
+            if (s) return s;
+          }
+        } catch (_) { }
+
+        if (str.includes('session=')) {
+          const m = str.match(/session=([a-zA-Z0-9_\-]+)/);
+          if (m && m[1]) return m[1];
+        }
+
+        if (str.startsWith('tba-')) {
+          return str;
+        }
+
+        if (/^[a-zA-Z0-9_\-]{4,32}$/.test(str)) {
+          return str;
+        }
+        return null;
+      }
+
+      async function startCameraScanner() {
+        const modal = document.getElementById('qr-scanner-modal');
+        const video = document.getElementById('qr-camera-video');
+        const feedback = document.getElementById('scanner-feedback-badge');
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        feedback.textContent = 'Starting camera…';
+        feedback.classList.remove('success');
+
+        try {
+          if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+          }
+          const constraints = {
+            video: {
+              facingMode: { ideal: currentFacingMode },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            audio: false
+          };
+          cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+          video.srcObject = cameraStream;
+          await video.play();
+          isScanning = true;
+          feedback.textContent = 'Point camera at Extension QR Code';
+          requestScanFrame();
+        } catch (err) {
+          console.error('Camera access error:', err);
+          feedback.textContent = 'Camera error: ' + (err.message || 'Permission denied');
+        }
+      }
+
+      function stopCameraScanner() {
+        isScanning = false;
+        if (scanAnimFrameId) {
+          cancelAnimationFrame(scanAnimFrameId);
+          scanAnimFrameId = null;
+        }
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(t => t.stop());
+          cameraStream = null;
+        }
+        const modal = document.getElementById('qr-scanner-modal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        torchActive = false;
+        const torchLbl = document.getElementById('lbl-torch');
+        if (torchLbl) torchLbl.textContent = 'Torch';
+      }
+
+      async function requestScanFrame() {
+        if (!isScanning) return;
+        const video = document.getElementById('qr-camera-video');
+        const canvas = document.getElementById('qr-hidden-canvas');
+        const feedback = document.getElementById('scanner-feedback-badge');
+
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
+          let foundCode = null;
+
+          // 1. Hardware accelerated native BarcodeDetector API (Android Chrome / Edge)
+          if (barcodeDetector) {
+            try {
+              const barcodes = await barcodeDetector.detect(video);
+              if (barcodes && barcodes.length > 0) {
+                foundCode = barcodes[0].rawValue;
+              }
+            } catch (_) { }
+          }
+
+          // 2. High-performance jsQR fallback (iOS Safari / Other browsers)
+          if (!foundCode && typeof jsQR === 'function') {
+            try {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                inversionAttempts: 'dontInvert',
+              });
+              if (code && code.data) {
+                foundCode = code.data;
+              }
+            } catch (_) { }
+          }
+
+          if (foundCode) {
+            const parsed = parseSessionFromQr(foundCode);
+            if (parsed) {
+              feedback.textContent = `✓ Connected: ${parsed}`;
+              feedback.classList.add('success');
+              vibrate([50, 70, 120]);
+              playSuccessChime();
+              setTimeout(() => {
+                stopCameraScanner();
+                switchSession(parsed);
+              }, 300);
+              return;
+            }
+          }
+        }
+
+        scanAnimFrameId = requestAnimationFrame(requestScanFrame);
+      }
+
+      // Scanner UI Event Bindings
+      document.getElementById('btn-open-scanner').addEventListener('click', () => {
+        vibrate(20);
+        startCameraScanner();
+      });
+
+      const btnCardScan = document.getElementById('btn-card-scan');
+      if (btnCardScan) {
+        btnCardScan.addEventListener('click', () => {
+          vibrate(20);
+          startCameraScanner();
+        });
+      }
+
+      document.getElementById('btn-close-scanner').addEventListener('click', () => {
+        vibrate(15);
+        stopCameraScanner();
+      });
+
+      document.getElementById('scanner-modal-backdrop').addEventListener('click', () => {
+        stopCameraScanner();
+      });
+
+      // Flip Camera Front / Back
+      document.getElementById('btn-switch-camera').addEventListener('click', () => {
+        vibrate(25);
+        currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+        startCameraScanner();
+      });
+
+      // Flashlight / Torch toggle
+      document.getElementById('btn-toggle-torch').addEventListener('click', async () => {
+        vibrate(25);
+        if (!cameraStream) return;
+        const track = cameraStream.getVideoTracks()[0];
+        if (!track) return;
+        try {
+          const caps = track.getCapabilities ? track.getCapabilities() : {};
+          if (caps.torch) {
+            torchActive = !torchActive;
+            await track.applyConstraints({ advanced: [{ torch: torchActive }] });
+            document.getElementById('lbl-torch').textContent = torchActive ? 'Torch ON' : 'Torch OFF';
+            showToast(torchActive ? 'Torch turned ON' : 'Torch turned OFF');
+          } else {
+            showToast('Flashlight not supported on this lens');
+          }
+        } catch (e) {
+          showToast('Torch error: ' + e.message);
+        }
+      });
+
+      // Manual Session Input
+      const btnApplyManual = document.getElementById('btn-apply-manual-session');
+      const inputManual = document.getElementById('input-manual-session');
+
+      function applyManualInput() {
+        const val = inputManual.value.trim();
+        if (val) {
+          const parsed = parseSessionFromQr(val) || val;
+          stopCameraScanner();
+          switchSession(parsed);
+          inputManual.value = '';
+        } else {
+          showToast('Please enter a session code');
+        }
+      }
+
+      btnApplyManual.addEventListener('click', applyManualInput);
+      inputManual.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') applyManualInput();
+      });
+
+      // ─── PWA Install Prompt & Service Worker Registration ─────────────────────
+      let deferredPrompt = null;
+      const installBtn = document.getElementById('btn-install-pwa');
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (installBtn) installBtn.style.display = 'inline-flex';
+      });
+
+      if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+          vibrate(20);
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            installBtn.style.display = 'none';
+            showToast('TypeByAman Installed Successfully!');
+          }
+          deferredPrompt = null;
+        });
+      }
+
+      window.addEventListener('appinstalled', () => {
+        if (installBtn) installBtn.style.display = 'none';
+        showToast('TypeByAman Installed!');
+      });
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js').catch(err => {
+            console.log('PWA ServiceWorker note:', err);
+          });
+        });
+      }
     </script>
 </body>
 

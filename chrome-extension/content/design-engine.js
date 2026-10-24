@@ -44,20 +44,44 @@
     totalActions: 0,
     platform: 'unknown',
     lastAction: null,
+    cursorSpeed: 1.0,      // Multiplier (0.4 to 3.5), default 1.0 (Normal)
+    operationSpeed: 1.0,   // Multiplier (0.4 to 4.0), default 1.0 (Normal)
   };
+
+  function parseSpeed(val, defaultVal = 1.0) {
+    if (typeof val === 'number' && !isNaN(val)) return Math.max(0.2, Math.min(5.0, val));
+    if (typeof val === 'string') {
+      const s = val.toLowerCase().trim();
+      if (s === 'slow' || s === 'very slow') return 0.6;
+      if (s === 'normal') return 1.0;
+      if (s === 'fast') return 1.8;
+      if (s === 'very-fast' || s === 'very fast' || s === 'turbo') return 2.8;
+      const num = parseFloat(s);
+      if (!isNaN(num) && num > 0) return Math.max(0.2, Math.min(5.0, num));
+    }
+    return defaultVal;
+  }
+
+  function getCursorMult() {
+    return Math.max(0.3, parseSpeed(designState.cursorSpeed, 1.0));
+  }
+
+  function getOpMult() {
+    return Math.max(0.3, parseSpeed(designState.operationSpeed, 1.0));
+  }
 
   // ─── Platform Detection ─────────────────────────────────────────────────────
 
   const PLATFORM_SIGNATURES = [
-    { name: 'canva',         test: () => location.hostname.includes('canva.com') },
-    { name: 'figma',         test: () => location.hostname.includes('figma.com') },
+    { name: 'canva', test: () => location.hostname.includes('canva.com') },
+    { name: 'figma', test: () => location.hostname.includes('figma.com') },
     { name: 'adobe-express', test: () => location.hostname.includes('express.adobe.com') || location.hostname.includes('adobeexpress.com') },
     { name: 'photoshop-web', test: () => location.hostname.includes('photoshop.adobe.com') },
-    { name: 'picsart',       test: () => location.hostname.includes('picsart.com') },
-    { name: 'pixlr',         test: () => location.hostname.includes('pixlr.com') },
-    { name: 'vectr',         test: () => location.hostname.includes('vectr.com') },
-    { name: 'gravit',        test: () => location.hostname.includes('designer.gravit.io') },
-    { name: 'generic-canvas',test: () => !!document.querySelector('canvas') },
+    { name: 'picsart', test: () => location.hostname.includes('picsart.com') },
+    { name: 'pixlr', test: () => location.hostname.includes('pixlr.com') },
+    { name: 'vectr', test: () => location.hostname.includes('vectr.com') },
+    { name: 'gravit', test: () => location.hostname.includes('designer.gravit.io') },
+    { name: 'generic-canvas', test: () => !!document.querySelector('canvas') },
   ];
 
   function detectPlatform() {
@@ -164,7 +188,7 @@
           const r = el.getBoundingClientRect();
           if (r.width > 120 && r.height > 120) return r;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     return {
       left: 60,
@@ -355,10 +379,9 @@
   function showClickHalo(x, y, styleVariant = 'blue', size = 34) {
     if (!_cursorContainer) return;
     const halo = document.createElement('div');
-    halo.className = `tba-click-halo ${
-      styleVariant === 'purple' ? 'tba-halo-secondary' :
-      styleVariant === 'amber' ? 'tba-halo-amber' : ''
-    }`;
+    halo.className = `tba-click-halo ${styleVariant === 'purple' ? 'tba-halo-secondary' :
+        styleVariant === 'amber' ? 'tba-halo-amber' : ''
+      }`;
     halo.style.left = `${x}px`;
     halo.style.top = `${y}px`;
     halo.style.width = `${size}px`;
@@ -461,9 +484,9 @@
   }
 
   // ─── Human Cursor Movement ───────────────────────────────────────────────────
-  // Moves the virtual cursor slowly with organic non-linear speed variation,
+  // Moves the virtual cursor with organic non-linear speed variation,
   // asymmetric bell-curve velocity, acceleration, decelerating target-homing, and micro-tremor.
-  // No two steps or strokes ever match a constant speed!
+  // Dynamic cursor speed is configurable via cursorSpeed (Slow, Normal, Fast, Very Fast/Custom).
 
   async function moveCursorTo(toX, toY, signal, options = {}) {
     const fromX = _cursorX;
@@ -476,28 +499,33 @@
       return;
     }
 
-    // Slow, measured human designer pacing (deliberate inspection & navigation)
-    // Distance-scaled duration: 900ms–2600ms for normal moves, 450ms–800ms for fast moves
-    const baseDuration = options.fast
-      ? rand(450, 800)
-      : Math.round(900 + Math.pow(dist, 0.65) * randf(30, 50) + rand(200, 500));
+    const cMult = getCursorMult();
 
-    // Ample steps for silky smooth visual rendering (30 to 130 steps)
-    const steps = Math.max(30, Math.min(130, Math.floor(dist / 4.5)));
+    // Natural human designer pacing scaled by cursorSpeed multiplier
+    // Normal (1.0x): 240ms–580ms for typical moves; Fast (1.8x): ~140ms–320ms; Very Fast (2.8x): ~80ms–190ms
+    const rawDuration = options.fast
+      ? rand(150, 280)
+      : Math.round(240 + Math.pow(dist, 0.54) * randf(9, 16) + rand(50, 140));
+    const baseDuration = Math.max(50, Math.round(rawDuration / cMult));
+
+    // Steps adapted to speed for fluid rendering without lag
+    const maxSteps = cMult > 2.0 ? 40 : (cMult > 1.3 ? 60 : 90);
+    const minSteps = cMult > 2.0 ? 10 : 16;
+    const steps = Math.max(minSteps, Math.min(maxSteps, Math.floor(dist / (3.2 * Math.sqrt(cMult)))));
 
     // Curved Bezier trajectory with natural human curvature
-    const curvature = randf(0.12, 0.28) * (Math.random() < 0.5 ? 1 : -1);
+    const curvature = randf(0.08, 0.22) * (Math.random() < 0.5 ? 1 : -1);
     const midX = (fromX + toX) / 2;
     const midY = (fromY + toY) / 2;
     const normalX = -(toY - fromY) / (dist || 1);
     const normalY = (toX - fromX) / (dist || 1);
-    const cpX = midX + normalX * dist * curvature + randf(-8, 8);
-    const cpY = midY + normalY * dist * curvature + randf(-8, 8);
+    const cpX = midX + normalX * dist * curvature + randf(-6, 6);
+    const cpY = midY + normalY * dist * curvature + randf(-6, 6);
 
     // Dynamic velocity persona for this stroke to ensure zero predictability:
     const rhythmType = pick(['bell', 'front-loaded', 'back-loaded', 'hesitant']);
     const speedSineFreq = randf(2.0, 4.5);
-    const speedSineAmp = randf(0.2, 0.42);
+    const speedSineAmp = randf(0.18, 0.36);
 
     for (let s = 1; s <= steps; s++) {
       if (signal?.aborted) return;
@@ -513,14 +541,14 @@
       } else if (rhythmType === 'back-loaded') {
         v = Math.sin(Math.pow(t, 1.35) * Math.PI);
       } else if (rhythmType === 'hesitant' && t > 0.35 && t < 0.65) {
-        v = Math.max(0.2, Math.sin(t * Math.PI) * 0.55);
+        v = Math.max(0.25, Math.sin(t * Math.PI) * 0.6);
       } else {
         v = Math.sin(t * Math.PI);
       }
 
       // Smooth step easing with sinusoidal variation (never constant velocity)
       const tEased = (1 - Math.cos(t * Math.PI)) / 2;
-      const microJitter = randf(-0.7, 0.7);
+      const microJitter = randf(-0.5, 0.5);
       const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX + microJitter;
       const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY + microJitter;
 
@@ -530,12 +558,12 @@
       _cursorY = y;
       renderCursorPosition(x, y, false);
 
-      // Dynamically varied step delay: slower at start & end, non-constant rhythm throughout
-      const velocityMod = Math.max(0.22, (v * (1 + Math.sin(t * Math.PI * speedSineFreq) * speedSineAmp)));
+      // Dynamically varied step delay: non-constant rhythm throughout
+      const velocityMod = Math.max(0.24, (v * (1 + Math.sin(t * Math.PI * speedSineFreq) * speedSineAmp)));
       const baseStepDelay = baseDuration / steps;
-      const dynamicStepDelay = (baseStepDelay / velocityMod) * randf(0.85, 1.25);
+      const dynamicStepDelay = (baseStepDelay / velocityMod) * randf(0.85, 1.2);
 
-      await sleep(Math.max(6, Math.round(dynamicStepDelay)), signal);
+      await sleep(Math.max(3, Math.round(dynamicStepDelay)), signal);
     }
 
     _cursorX = toX;
@@ -551,13 +579,15 @@
     if (signal?.aborted) return;
     await waitIfPaused(signal);
 
+    const opMult = getOpMult();
+
     // Visual feedback: depress cursor and spawn click halo
     renderCursorPosition(x, y, true);
     showClickHalo(x, y, opts.haloVariant || 'blue');
 
     dispatchPointer('pointerdown', x, y, { buttons: 1 });
     dispatchMouse('mousedown', x, y, { buttons: 1 });
-    await sleep(rand(45, 110), signal);
+    await sleep(Math.max(15, Math.round(rand(35, 75) / opMult)), signal);
 
     // Release cursor
     renderCursorPosition(x, y, false);
@@ -570,14 +600,15 @@
       if (el && typeof el.focus === 'function') el.focus();
     }
 
-    await sleep(rand(50, 160), signal);
+    await sleep(Math.max(20, Math.round(rand(40, 110) / opMult)), signal);
   }
 
   /** Double-click with dual-stage expanding ripples */
   async function doubleClickAt(x, y, signal) {
     await clickAt(x, y, signal, { haloVariant: 'blue' });
     if (signal?.aborted) return;
-    await sleep(rand(60, 110), signal);
+    const opMult = getOpMult();
+    await sleep(Math.max(20, Math.round(rand(45, 90) / opMult)), signal);
     if (signal?.aborted) return;
 
     // Second click pulse with secondary halo
@@ -586,21 +617,24 @@
 
     dispatchPointer('pointerdown', x, y, { buttons: 1 });
     dispatchMouse('mousedown', x, y, { buttons: 1 });
-    await sleep(rand(40, 80), signal);
+    await sleep(Math.max(15, Math.round(rand(30, 65) / opMult)), signal);
 
     renderCursorPosition(x, y, false);
     dispatchPointer('pointerup', x, y, { buttons: 0 });
     dispatchMouse('mouseup', x, y, { buttons: 0 });
     dispatchMouse('click', x, y);
     dispatchMouse('dblclick', x, y);
-    await sleep(rand(80, 200), signal);
+    await sleep(Math.max(25, Math.round(rand(50, 130) / opMult)), signal);
   }
 
-  /** Drag with continuous glowing drag halo and slow, organic variable speed */
+  /** Drag with continuous glowing drag halo and organic variable speed */
   async function dragFrom(fromX, fromY, toX, toY, signal, opts = {}) {
     await moveCursorTo(fromX, fromY, signal);
     if (signal?.aborted) return;
     await waitIfPaused(signal);
+
+    const cMult = getCursorMult();
+    const opMult = getOpMult();
 
     // Press down & activate drag halo
     renderCursorPosition(fromX, fromY, true);
@@ -609,7 +643,7 @@
 
     dispatchPointer('pointerdown', fromX, fromY, { buttons: 1 });
     dispatchMouse('mousedown', fromX, fromY, { buttons: 1 });
-    await sleep(rand(120, 240), signal);
+    await sleep(Math.max(25, Math.round(rand(65, 140) / opMult)), signal);
     if (signal?.aborted) {
       updateDragHalo(0, 0, false);
       renderCursorPosition(fromX, fromY, false);
@@ -617,12 +651,16 @@
     }
 
     const dist = Math.hypot(toX - fromX, toY - fromY);
-    const steps = Math.max(35, Math.min(120, Math.floor(dist / 4.0)));
-    const cpX = (fromX + toX) / 2 + randf(-dist * 0.14, dist * 0.14);
-    const cpY = (fromY + toY) / 2 + randf(-dist * 0.14, dist * 0.14);
+    const maxSteps = cMult > 2.0 ? 38 : (cMult > 1.3 ? 55 : 80);
+    const steps = Math.max(12, Math.min(maxSteps, Math.floor(dist / (3.4 * Math.sqrt(cMult)))));
+    const cpX = (fromX + toX) / 2 + randf(-dist * 0.12, dist * 0.12);
+    const cpY = (fromY + toY) / 2 + randf(-dist * 0.12, dist * 0.12);
 
-    // Deliberate, slow human drag duration (1100ms - 2800ms)
-    const dragDuration = opts.fast ? rand(650, 1100) : Math.round(1100 + Math.pow(dist, 0.6) * randf(28, 48) + rand(250, 600));
+    // Deliberate human drag duration scaled by cursorSpeed
+    const rawDragDuration = opts.fast
+      ? rand(260, 480)
+      : Math.round(420 + Math.pow(dist, 0.54) * randf(11, 20) + rand(90, 220));
+    const dragDuration = Math.max(70, Math.round(rawDragDuration / cMult));
 
     for (let s = 1; s <= steps; s++) {
       if (signal?.aborted) {
@@ -636,8 +674,8 @@
       const t = s / steps;
       // Smooth human ease-in-out with deceleration near alignment point
       const tEased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX + randf(-0.8, 0.8);
-      const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY + randf(-0.8, 0.8);
+      const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX + randf(-0.6, 0.6);
+      const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY + randf(-0.6, 0.6);
 
       dispatchPointer('pointermove', x, y, { buttons: 1, dragging: true, pressure: 0.5 });
       dispatchMouse('mousemove', x, y, { buttons: 1, dragging: true });
@@ -647,9 +685,9 @@
       updateDragHalo(x, y, true);
 
       // Non-constant variable drag step delay
-      const v = Math.max(0.3, Math.sin(t * Math.PI) * (1 + Math.sin(t * Math.PI * 3) * 0.25));
-      const stepDelay = (dragDuration / steps) * (1 / v) * randf(0.85, 1.25);
-      await sleep(Math.max(6, Math.round(stepDelay)), signal);
+      const v = Math.max(0.3, Math.sin(t * Math.PI) * (1 + Math.sin(t * Math.PI * 3) * 0.22));
+      const stepDelay = (dragDuration / steps) * (1 / v) * randf(0.85, 1.2);
+      await sleep(Math.max(3, Math.round(stepDelay)), signal);
     }
 
     if (signal?.aborted) {
@@ -659,7 +697,7 @@
     }
 
     // Release mouse and deactivate drag halo
-    await sleep(rand(90, 190), signal);
+    await sleep(Math.max(20, Math.round(rand(45, 100) / opMult)), signal);
     renderCursorPosition(toX, toY, false);
     updateDragHalo(0, 0, false);
     showClickHalo(toX, toY, 'purple', 32);
@@ -667,17 +705,18 @@
     dispatchMouse('mouseup', toX, toY, { buttons: 0 });
     _cursorX = toX;
     _cursorY = toY;
-    await sleep(rand(90, 240), signal);
+    await sleep(Math.max(25, Math.round(rand(50, 130) / opMult)), signal);
   }
 
   /** Press a keyboard shortcut */
   async function pressShortcut(key, mods = {}, signal) {
     const opts = { ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods };
     const code = key.length === 1 ? `Key${key.toUpperCase()}` : key;
+    const opMult = getOpMult();
     dispatchKeyboard('keydown', key, { ...opts, code });
-    await sleep(rand(35, 85), signal);
+    await sleep(Math.max(15, Math.round(rand(25, 65) / opMult)), signal);
     dispatchKeyboard('keyup', key, { ...opts, code });
-    await sleep(rand(45, 110), signal);
+    await sleep(Math.max(20, Math.round(rand(30, 80) / opMult)), signal);
   }
 
   /** Scroll or zoom on canvas */
@@ -685,43 +724,47 @@
     const ws = getWorkspaceRect();
     const x = randf(ws.left + 80, ws.right - 80);
     const y = randf(ws.top + 50, ws.bottom - 50);
+    const opMult = getOpMult();
 
     await moveCursorTo(x, y, signal, { fast: true });
     if (signal.aborted) return;
 
-    const steps = rand(3, 7);
+    const steps = rand(3, 6);
     for (let i = 0; i < steps; i++) {
       if (signal.aborted) return;
       const delta = randf(-80, 80);
       dispatchWheel(x, y, 0, delta, zoom);
-      await sleep(rand(40, 110), signal);
+      await sleep(Math.max(20, Math.round(rand(30, 80) / opMult)), signal);
     }
   }
 
   // ─── Thinking Pauses ────────────────────────────────────────────────────────
   // Authentic hesitation and inspection pauses mimicking real design cognition.
+  // Scaled dynamically by operationSpeed.
 
   async function thinkingPause(signal, type = 'short') {
     await waitIfPaused();
     if (signal.aborted) return;
 
-    let ms;
+    const opMult = getOpMult();
+    let rawMs;
     switch (type) {
-      case 'micro':  ms = rand(220, 600);   break;
-      case 'short':  ms = rand(700, 2000);  break;
-      case 'medium': ms = rand(2000, 4800); break;
-      case 'long':   ms = rand(5000, 11000); break;
-      case 'idle':   ms = rand(12000, 28000); break;
-      default:       ms = rand(500, 2000);
+      case 'micro': rawMs = rand(90, 240); break;
+      case 'short': rawMs = rand(300, 800); break;
+      case 'medium': rawMs = rand(800, 1800); break;
+      case 'long': rawMs = rand(1800, 4200); break;
+      case 'idle': rawMs = rand(4000, 8500); break;
+      default: rawMs = rand(250, 700);
     }
+    const ms = Math.max(30, Math.round(rawMs / opMult));
 
-    if (type === 'long' || type === 'idle') {
-      const cycles = rand(2, 4);
+    if ((type === 'long' || type === 'idle') && opMult < 1.8) {
+      const cycles = rand(2, 3);
       const ws = getWorkspaceRect();
       for (let i = 0; i < cycles && !signal.aborted; i++) {
         const pt = randomPointIn(ws, 40);
         await moveCursorTo(pt.x, pt.y, signal, { fast: false });
-        await sleep(rand(ms / cycles * 0.5, ms / cycles * 1.1), signal);
+        await sleep(Math.max(25, Math.round(rand(ms / cycles * 0.4, ms / cycles * 0.9))), signal);
       }
     } else {
       await sleep(ms, signal);
@@ -1189,15 +1232,15 @@
   async function actionKeyboardShortcut(signal) {
     const shortcuts = [
       { weight: 18, fn: () => pressShortcut('z', { ctrlKey: true }, signal) },
-      { weight: 8,  fn: () => pressShortcut('z', { ctrlKey: true, shiftKey: true }, signal) },
+      { weight: 8, fn: () => pressShortcut('z', { ctrlKey: true, shiftKey: true }, signal) },
       { weight: 10, fn: () => pressShortcut('d', { ctrlKey: true }, signal) },
-      { weight: 8,  fn: () => pressShortcut('a', { ctrlKey: true }, signal) },
-      { weight: 6,  fn: () => pressShortcut('c', { ctrlKey: true }, signal) },
-      { weight: 6,  fn: () => pressShortcut('v', { ctrlKey: true }, signal) },
-      { weight: 5,  fn: () => pressShortcut(']', { ctrlKey: true }, signal) },
-      { weight: 5,  fn: () => pressShortcut('[', { ctrlKey: true }, signal) },
-      { weight: 4,  fn: () => pressShortcut('g', { ctrlKey: true }, signal) },
-      { weight: 4,  fn: () => pressShortcut('Escape', {}, signal) },
+      { weight: 8, fn: () => pressShortcut('a', { ctrlKey: true }, signal) },
+      { weight: 6, fn: () => pressShortcut('c', { ctrlKey: true }, signal) },
+      { weight: 6, fn: () => pressShortcut('v', { ctrlKey: true }, signal) },
+      { weight: 5, fn: () => pressShortcut(']', { ctrlKey: true }, signal) },
+      { weight: 5, fn: () => pressShortcut('[', { ctrlKey: true }, signal) },
+      { weight: 4, fn: () => pressShortcut('g', { ctrlKey: true }, signal) },
+      { weight: 4, fn: () => pressShortcut('Escape', {}, signal) },
     ];
     const totalWeight = shortcuts.reduce((sum, s) => sum + s.weight, 0);
     let rng = Math.random() * totalWeight;
@@ -1276,29 +1319,541 @@
     designState.totalActions++;
   }
 
+  // ─── Actual Impressive Designing Pipelines ─────────────────────────────────
+  // Actively constructs modern layouts: Hero Banners, CTA components, Feature Grids,
+  // Typography, and direct high-DPI rendering when real HTML5 canvases are present.
+
+  function drawOnCanvasIfPresent(renderFn) {
+    try {
+      const canvases = Array.from(document.querySelectorAll('canvas')).filter(c => {
+        const r = c.getBoundingClientRect();
+        return r.width > 80 && r.height > 80;
+      });
+      if (canvases.length === 0) return false;
+
+      for (const canvas of canvases) {
+        let ctx = null;
+        try { ctx = canvas.getContext('2d'); } catch (_) { }
+        if (!ctx) continue;
+
+        ctx.save();
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / (rect.width || canvas.width || 1);
+        const scaleY = canvas.height / (rect.height || canvas.height || 1);
+
+        renderFn(ctx, rect, scaleX, scaleY);
+        ctx.restore();
+        return true;
+      }
+    } catch (_) { }
+    return false;
+  }
+
+  /**
+   * Helper: Type text into current focused element with variable human velocity
+   */
+  async function typeDesignText(text, signal) {
+    let inFastBurst = Math.random() < 0.45;
+    for (let i = 0; i < text.length && !signal.aborted; i++) {
+      await waitIfPaused(signal);
+      if (signal.aborted) break;
+
+      const char = text[i];
+      if (char === ' ') inFastBurst = Math.random() < 0.5;
+
+      // Occasional human typo & quick backspace fix
+      if (Math.random() < 0.12 && i > 1) {
+        const typoChar = String.fromCharCode(char.charCodeAt(0) + rand(-1, 1));
+        dispatchKeyboard('keydown', typoChar);
+        await sleep(rand(30, 60), signal);
+        dispatchKeyboard('keyup', typoChar);
+        await sleep(rand(180, 320), signal);
+        dispatchKeyboard('keydown', 'Backspace', { code: 'Backspace' });
+        await sleep(rand(30, 60), signal);
+        dispatchKeyboard('keyup', 'Backspace', { code: 'Backspace' });
+        await sleep(rand(100, 200), signal);
+      }
+
+      const keyDur = inFastBurst ? rand(20, 50) : rand(50, 95);
+      dispatchKeyboard('keydown', char);
+      await sleep(keyDur, signal);
+      dispatchKeyboard('keyup', char);
+
+      let pauseMs = inFastBurst ? rand(25, 60) : rand(60, 140);
+      if (char === ' ') pauseMs += rand(70, 180);
+      if (char === '→' || char === '—') pauseMs += rand(150, 300);
+      await sleep(pauseMs, signal);
+    }
+  }
+
+  /**
+   * 1. Create Complete Hero Banner Composition:
+   * Actively builds a modern glassmorphic hero card, selects gradient/fill,
+   * adds headline typography, bold styling, and a secondary action pill.
+   */
+  async function actionCreateHeroBanner(signal) {
+    const ws = getWorkspaceRect();
+    const bannerW = Math.round(ws.width * randf(0.72, 0.82));
+    const bannerH = Math.round(ws.height * randf(0.32, 0.40));
+    const bannerX = Math.round(ws.left + (ws.width - bannerW) / 2);
+    const bannerY = Math.round(ws.top + ws.height * 0.12);
+
+    // Step A: Activate Rectangle / Frame tool via universal shortcut 'r'
+    await pressShortcut('r', {}, signal);
+    await sleep(rand(150, 320), signal);
+
+    // Step B: Drag across workspace creating the hero container frame
+    await dragFrom(bannerX, bannerY, bannerX + bannerW, bannerY + bannerH, signal, { fast: false });
+    if (signal.aborted) return;
+    await thinkingPause(signal, 'micro');
+
+    // Step C: Color swatch exploration for the hero container
+    const colorBtn = findVisible(['[aria-label*="Color" i]', '[data-testid*="color" i]', '[class*="swatch"]']);
+    if (colorBtn) {
+      const c = center(colorBtn);
+      await clickAt(c.x, c.y, signal, { haloVariant: 'amber' });
+      await sleep(rand(200, 400), signal);
+      await clickAt(c.x + randf(-30, 50), c.y + randf(60, 120), signal, { haloVariant: 'purple' });
+    }
+
+    // Step D: Activate Text tool ('t') to place impactful hero typography
+    await pressShortcut('t', {}, signal);
+    await sleep(rand(150, 300), signal);
+
+    const titleX = Math.round(bannerX + bannerW * 0.5);
+    const titleY = Math.round(bannerY + bannerH * 0.36);
+    await clickAt(titleX, titleY, signal, { haloVariant: 'blue', focus: true });
+    if (signal.aborted) return;
+
+    const heroHeadlines = [
+      'DESIGNING THE FUTURE',
+      'NEXT-GEN CREATIVE STUDIO',
+      'ELEVATE DIGITAL CRAFT',
+      'MINIMALIST ARCHITECTURE',
+      'INNOVATION IN EVERY PIXEL',
+      'BEYOND BOUNDARIES 2026',
+    ];
+    const headline = pick(heroHeadlines);
+    await typeDesignText(headline, signal);
+    if (signal.aborted) return;
+
+    // Bold formatting (Ctrl+A, Ctrl+B)
+    await pressShortcut('a', { ctrlKey: true }, signal);
+    await sleep(rand(100, 200), signal);
+    await pressShortcut('b', { ctrlKey: true }, signal);
+    await sleep(rand(150, 300), signal);
+
+    // Step E: Create CTA pill button inside hero banner
+    await pressShortcut('r', {}, signal);
+    await sleep(rand(120, 250), signal);
+
+    const btnW = 160;
+    const btnH = 42;
+    const btnX = Math.round(bannerX + (bannerW - btnW) / 2);
+    const btnY = Math.round(bannerY + bannerH * 0.70);
+
+    await dragFrom(btnX, btnY, btnX + btnW, btnY + btnH, signal, { fast: true });
+    if (signal.aborted) return;
+
+    // Type CTA copy inside button
+    await pressShortcut('t', {}, signal);
+    await sleep(rand(100, 200), signal);
+    await clickAt(btnX + btnW / 2, btnY + btnH / 2, signal, { focus: true });
+    await typeDesignText('Explore Now →', signal);
+
+    // Step F: If an HTML5 canvas is present, physically render the design
+    drawOnCanvasIfPresent((ctx, rect, sx, sy) => {
+      const relX = (bannerX - rect.left) * sx;
+      const relY = (bannerY - rect.top) * sy;
+      const relW = bannerW * sx;
+      const relH = bannerH * sy;
+      const radius = 18 * sx;
+
+      // Hero Card Background Gradient
+      const grad = ctx.createLinearGradient(relX, relY, relX + relW, relY + relH);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(0.5, '#1e1b4b');
+      grad.addColorStop(1, '#020617');
+
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)';
+      ctx.lineWidth = 2 * sx;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+      ctx.shadowBlur = 25 * sx;
+
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(relX, relY, relW, relH, radius);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(relX, relY, relW, relH);
+        ctx.strokeRect(relX, relY, relW, relH);
+      }
+
+      // Title Typography
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.round(22 * sx)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(headline, relX + relW / 2, relY + relH * 0.36);
+
+      // Subtitle
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `${Math.round(12 * sx)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.fillText('Crafted with precision & modern aesthetics', relX + relW / 2, relY + relH * 0.52);
+
+      // Pill Button
+      const bRelX = (btnX - rect.left) * sx;
+      const bRelY = (btnY - rect.top) * sy;
+      const bRelW = btnW * sx;
+      const bRelH = btnH * sy;
+
+      const btnGrad = ctx.createLinearGradient(bRelX, bRelY, bRelX + bRelW, bRelY);
+      btnGrad.addColorStop(0, '#3b82f6');
+      btnGrad.addColorStop(1, '#8b5cf6');
+
+      ctx.fillStyle = btnGrad;
+      ctx.shadowColor = 'rgba(59, 130, 246, 0.5)';
+      ctx.shadowBlur = 12 * sx;
+
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(bRelX, bRelY, bRelW, bRelH, bRelH / 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(bRelX, bRelY, bRelW, bRelH);
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.round(12 * sx)}px -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.fillText('Explore Now →', bRelX + bRelW / 2, bRelY + bRelH / 2);
+    });
+
+    // Designer step back to admire composition
+    await thinkingPause(signal, 'medium');
+    designState.totalActions += 3;
+  }
+
+  /**
+   * 2. Create Modern CTA Button Component:
+   * Selects Rectangle/Shape tool, creates sleek pill button, picks accent color,
+   * adds centered action copy, and applies bold styling.
+   */
+  async function actionCreateCTAButton(signal) {
+    const ws = getWorkspaceRect();
+    const btnW = rand(170, 210);
+    const btnH = rand(44, 52);
+    const btnX = Math.round(ws.left + ws.width * randf(0.3, 0.5));
+    const btnY = Math.round(ws.top + ws.height * randf(0.5, 0.75));
+
+    // Rectangle tool
+    await pressShortcut('r', {}, signal);
+    await sleep(rand(120, 250), signal);
+
+    await dragFrom(btnX, btnY, btnX + btnW, btnY + btnH, signal, { fast: true });
+    if (signal.aborted) return;
+    await thinkingPause(signal, 'micro');
+
+    // Pick vibrant accent color (electric blue / emerald / amber)
+    const colorBtn = findVisible(['[aria-label*="Color" i]', '[data-testid*="color" i]', '[class*="swatch"]']);
+    if (colorBtn) {
+      const c = center(colorBtn);
+      await clickAt(c.x, c.y, signal, { haloVariant: 'amber' });
+      await sleep(rand(180, 350), signal);
+      await clickAt(c.x + randf(20, 60), c.y + randf(60, 100), signal, { haloVariant: 'blue' });
+    }
+
+    // Text tool
+    await pressShortcut('t', {}, signal);
+    await sleep(rand(100, 200), signal);
+
+    await clickAt(btnX + btnW / 2, btnY + btnH / 2, signal, { focus: true });
+    if (signal.aborted) return;
+
+    const ctaLabels = [
+      'Get Started Free →',
+      'Claim Early Access',
+      'Launch Studio Beta',
+      'Download Portfolio',
+      'Join 100K+ Creators',
+    ];
+    const label = pick(ctaLabels);
+    await typeDesignText(label, signal);
+    if (signal.aborted) return;
+
+    await pressShortcut('a', { ctrlKey: true }, signal);
+    await sleep(rand(100, 200), signal);
+    await pressShortcut('b', { ctrlKey: true }, signal);
+
+    // Direct Canvas Rendering
+    drawOnCanvasIfPresent((ctx, rect, sx, sy) => {
+      const bX = (btnX - rect.left) * sx;
+      const bY = (btnY - rect.top) * sy;
+      const bW = btnW * sx;
+      const bH = btnH * sy;
+
+      const grad = ctx.createLinearGradient(bX, bY, bX + bW, bH);
+      grad.addColorStop(0, '#2563eb');
+      grad.addColorStop(1, '#7c3aed');
+
+      ctx.fillStyle = grad;
+      ctx.shadowColor = 'rgba(37, 99, 235, 0.4)';
+      ctx.shadowBlur = 15 * sx;
+
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(bX, bY, bW, bH, bH / 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(bX, bY, bW, bH);
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.round(13 * sx)}px -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, bX + bW / 2, bY + bH / 2);
+    });
+
+    await thinkingPause(signal, 'short');
+    designState.totalActions += 2;
+  }
+
+  /**
+   * 3. Create Multi-Card Feature Grid:
+   * Constructs 3 modular product cards in a structured layout with icon badge circles,
+   * feature headers, and descriptive typography.
+   */
+  async function actionCreateFeatureCardGrid(signal) {
+    const ws = getWorkspaceRect();
+    const cols = 3;
+    const cardGap = Math.round(ws.width * 0.03);
+    const totalGap = cardGap * (cols - 1);
+    const usableW = Math.round(ws.width * 0.82);
+    const cardW = Math.round((usableW - totalGap) / cols);
+    const cardH = Math.round(ws.height * randf(0.28, 0.34));
+    const startX = Math.round(ws.left + (ws.width - usableW) / 2);
+    const cardY = Math.round(ws.top + ws.height * 0.52);
+
+    const features = [
+      { icon: '⚡', title: 'Lightning Fast', desc: 'Ultra-low latency rendering' },
+      { icon: '🛡️', title: 'Bank-Grade Safe', desc: 'Full client-side encryption' },
+      { icon: '☁️', title: 'Cloud Synced', desc: 'Real-time multi-device relay' },
+    ];
+
+    for (let c = 0; c < cols && !signal.aborted; c++) {
+      const curX = startX + c * (cardW + cardGap);
+      const feat = features[c];
+
+      // Draw Card Container
+      await pressShortcut('r', {}, signal);
+      await sleep(rand(100, 200), signal);
+      await dragFrom(curX, cardY, curX + cardW, cardY + cardH, signal, { fast: true });
+      if (signal.aborted) break;
+
+      // Draw Icon Circle
+      await pressShortcut('o', {}, signal);
+      await sleep(rand(100, 200), signal);
+      const iconX = curX + 25;
+      const iconY = cardY + 25;
+      await dragFrom(iconX, iconY, iconX + 36, iconY + 36, signal, { fast: true });
+
+      // Type Feature Title
+      await pressShortcut('t', {}, signal);
+      await sleep(rand(100, 200), signal);
+      await clickAt(curX + cardW / 2, cardY + cardH * 0.55, signal, { focus: true });
+      await typeDesignText(feat.title, signal);
+
+      await sleep(rand(150, 300), signal);
+    }
+
+    // Direct Canvas Rendering
+    drawOnCanvasIfPresent((ctx, rect, sx, sy) => {
+      for (let c = 0; c < cols; c++) {
+        const curX = startX + c * (cardW + cardGap);
+        const feat = features[c];
+        const relX = (curX - rect.left) * sx;
+        const relY = (cardY - rect.top) * sy;
+        const relW = cardW * sx;
+        const relH = cardH * sy;
+        const r = 14 * sx;
+
+        // Card Body
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1.5 * sx;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+        ctx.shadowBlur = 14 * sx;
+
+        if (typeof ctx.roundRect === 'function') {
+          ctx.beginPath();
+          ctx.roundRect(relX, relY, relW, relH, r);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillRect(relX, relY, relW, relH);
+          ctx.strokeRect(relX, relY, relW, relH);
+        }
+
+        // Icon Circle
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+        ctx.strokeStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.arc(relX + 36 * sx, relY + 36 * sy, 18 * sx, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = `${Math.round(16 * sx)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(feat.icon, relX + 36 * sx, relY + 37 * sy);
+
+        // Title
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = `bold ${Math.round(14 * sx)}px -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.fillText(feat.title, relX + 22 * sx, relY + relH * 0.62);
+
+        // Description
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = `${Math.round(11 * sx)}px -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.fillText(feat.desc, relX + 22 * sx, relY + relH * 0.78);
+      }
+    });
+
+    await thinkingPause(signal, 'medium');
+    designState.totalActions += 4;
+  }
+
+  /**
+   * 4. Draw Vector Artwork / Fluid Bezier Curve:
+   * Uses pen/line tool to trace artistic harmonic curves across the canvas.
+   */
+  async function actionDrawVectorArtwork(signal) {
+    const ws = getWorkspaceRect();
+    const p1 = randomPointIn(ws, 80);
+    const p2 = { x: p1.x + randf(80, 160), y: p1.y + randf(-80, 80) };
+    const p3 = { x: p2.x + randf(60, 140), y: p2.y + randf(-60, 100) };
+
+    await pressShortcut('p', {}, signal); // Pen tool
+    await sleep(rand(120, 250), signal);
+
+    await clickAt(p1.x, p1.y, signal, { haloVariant: 'purple' });
+    await dragFrom(p1.x, p1.y, p2.x, p2.y, signal, { fast: false });
+    await dragFrom(p2.x, p2.y, p3.x, p3.y, signal, { fast: false });
+
+    // Canvas Render
+    drawOnCanvasIfPresent((ctx, rect, sx, sy) => {
+      const x1 = (p1.x - rect.left) * sx;
+      const y1 = (p1.y - rect.top) * sy;
+      const x2 = (p2.x - rect.left) * sx;
+      const y2 = (p2.y - rect.top) * sy;
+      const x3 = (p3.x - rect.left) * sx;
+      const y3 = (p3.y - rect.top) * sy;
+
+      const grad = ctx.createLinearGradient(x1, y1, x3, y3);
+      grad.addColorStop(0, '#38bdf8');
+      grad.addColorStop(1, '#c084fc');
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 3 * sx;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10 * sx;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.bezierCurveTo(x1 + 40 * sx, y1 - 30 * sy, x2 - 40 * sx, y2 + 30 * sy, x2, y2);
+      ctx.bezierCurveTo(x2 + 40 * sx, y2 - 20 * sy, x3 - 40 * sx, y3 + 20 * sy, x3, y3);
+      ctx.stroke();
+    });
+
+    await thinkingPause(signal, 'short');
+    designState.totalActions++;
+  }
+
+  /**
+   * 5. Platform-Smart Actual Design: Canva & Web-based Tools
+   * Specifically triggers real element creation buttons (Add a heading, Elements, etc.)
+   */
+  async function actionPlatformSmartDesign(signal) {
+    // 1. Check if Canva "Text" tab exists
+    const textTab = findVisible([
+      'button[aria-label*="Text" i]',
+      '[data-testid*="text-button"]',
+      '[data-testid="side-panel-button-text"]',
+    ]);
+
+    if (textTab) {
+      const tc = center(textTab);
+      await clickAt(tc.x, tc.y, signal, { haloVariant: 'purple' });
+      await sleep(rand(350, 700), signal);
+
+      // In Canva, find "Add a heading" button
+      const headingBtn = Array.from(document.querySelectorAll('button, div[role="button"]')).find(el => {
+        const t = (el.textContent || '').toLowerCase();
+        return t.includes('add a heading') || t.includes('heading') || t.includes('add a text box');
+      });
+
+      if (headingBtn) {
+        const hc = center(headingBtn);
+        await clickAt(hc.x, hc.y, signal, { haloVariant: 'blue' });
+        await sleep(rand(400, 800), signal);
+        await typeDesignText(pick(['SUMMER EDITORIAL 2026', 'DESIGN BEYOND BOUNDARIES', 'PREMIUM CRAFTSMANSHIP']), signal);
+        designState.totalActions += 2;
+        return;
+      }
+    }
+
+    // 2. Check if Canva "Elements" tab exists
+    const elementsTab = findVisible([
+      'button[aria-label*="Elements" i]',
+      '[data-testid*="elements-button"]',
+    ]);
+    if (elementsTab) {
+      const ec = center(elementsTab);
+      await clickAt(ec.x, ec.y, signal, { haloVariant: 'purple' });
+      await sleep(rand(350, 650), signal);
+      await clickAt(randf(100, 220), randf(160, 280), signal, { haloVariant: 'amber' });
+      designState.totalActions++;
+      return;
+    }
+
+    // Fallback: Default to Hero Banner construction
+    await actionCreateHeroBanner(signal);
+  }
+
   // ─── Action Pool ────────────────────────────────────────────────────────────
-  // Weighted to heavily feature color changing, text editing, background adjustment,
-  // shape addition, rotation, and organic undo/redo exploration.
+  // Weighted to prioritize real, impressive generative design: Hero banners,
+  // CTA buttons, feature grids, platform-smart creation, and typography.
 
   const ACTION_POOL = [
-    { weight: 14, label: 'edit-text',         fn: actionEditText },
-    { weight: 13, label: 'change-color',      fn: actionChangeColor },
-    { weight: 11, label: 'change-background', fn: actionChangeBackground },
-    { weight: 10, label: 'add-shape',         fn: actionAddShapeOrGraphic },
-    { weight: 11, label: 'select',            fn: actionSelectElement },
-    { weight: 11, label: 'move',              fn: actionMoveElement },
-    { weight: 8,  label: 'rotate',            fn: actionRotateElement },
-    { weight: 8,  label: 'undo-explore',      fn: actionUndoRedoExploration },
-    { weight: 8,  label: 'zoom-inspect',      fn: actionZoomAndInspect },
-    { weight: 8,  label: 'resize',            fn: actionResizeElement },
-    { weight: 7,  label: 'shortcut',          fn: actionKeyboardShortcut },
-    { weight: 6,  label: 'draw',              fn: actionDrawShape },
-    { weight: 6,  label: 'nudge',             fn: actionArrowNudge },
-    { weight: 6,  label: 'toolbar',           fn: actionClickToolbar },
-    { weight: 5,  label: 'layers',            fn: actionLayersPanel },
-    { weight: 4,  label: 'rubber-select',     fn: actionRubberBandSelect },
-    { weight: 4,  label: 'pan',               fn: actionPanCanvas },
-    { weight: 4,  label: 'scroll',            fn: actionScroll },
+    { weight: 20, label: 'hero-banner', fn: actionCreateHeroBanner },
+    { weight: 16, label: 'cta-button', fn: actionCreateCTAButton },
+    { weight: 16, label: 'feature-grid', fn: actionCreateFeatureCardGrid },
+    { weight: 14, label: 'platform-smart', fn: actionPlatformSmartDesign },
+    { weight: 12, label: 'edit-text', fn: actionEditText },
+    { weight: 11, label: 'change-color', fn: actionChangeColor },
+    { weight: 10, label: 'vector-artwork', fn: actionDrawVectorArtwork },
+    { weight: 9, label: 'change-background', fn: actionChangeBackground },
+    { weight: 8, label: 'add-shape', fn: actionAddShapeOrGraphic },
+    { weight: 7, label: 'rotate', fn: actionRotateElement },
+    { weight: 6, label: 'undo-explore', fn: actionUndoRedoExploration },
+    { weight: 6, label: 'zoom-inspect', fn: actionZoomAndInspect },
+    { weight: 5, label: 'draw', fn: actionDrawShape },
+    { weight: 4, label: 'move', fn: actionMoveElement },
+    { weight: 4, label: 'resize', fn: actionResizeElement },
+    { weight: 3, label: 'nudge', fn: actionArrowNudge },
+    { weight: 3, label: 'shortcut', fn: actionKeyboardShortcut },
+    { weight: 3, label: 'select', fn: actionSelectElement },
+    { weight: 2, label: 'toolbar', fn: actionClickToolbar },
+    { weight: 2, label: 'layers', fn: actionLayersPanel },
   ];
 
   const TOTAL_WEIGHT = ACTION_POOL.reduce((s, a) => s + a.weight, 0);
@@ -1315,11 +1870,11 @@
   // ─── Thinking Pause Scheduler ────────────────────────────────────────────────
 
   const PAUSE_WEIGHTS = [
-    { type: 'micro',  weight: 38 },
-    { type: 'short',  weight: 36 },
+    { type: 'micro', weight: 38 },
+    { type: 'short', weight: 36 },
     { type: 'medium', weight: 16 },
-    { type: 'long',   weight: 8  },
-    { type: 'idle',   weight: 2  },
+    { type: 'long', weight: 8 },
+    { type: 'idle', weight: 2 },
   ];
   const PAUSE_TOTAL = PAUSE_WEIGHTS.reduce((s, p) => s + p.weight, 0);
 
@@ -1354,7 +1909,7 @@
         action: 'designStatus',
         detail: { state: 'running', platform: designState.platform }
       });
-    } catch (_) {}
+    } catch (_) { }
 
     try {
       // Brief human warm-up pause before first action
@@ -1402,7 +1957,7 @@
         window.dispatchEvent(new CustomEvent('tbaDesignStatus', { detail: statusDetail }));
         try {
           chrome.runtime.sendMessage({ action: 'designStatus', detail: statusDetail });
-        } catch (_) {}
+        } catch (_) { }
 
         // Human thinking pause between actions
         await thinkingPause(signal, pickPauseType());
@@ -1414,7 +1969,7 @@
         window.dispatchEvent(new CustomEvent('tbaDesignStatus', { detail: doneDetail }));
         try {
           chrome.runtime.sendMessage({ action: 'designStatus', detail: doneDetail });
-        } catch (_) {}
+        } catch (_) { }
       }
 
     } catch (err) {
@@ -1423,7 +1978,7 @@
         window.dispatchEvent(new CustomEvent('tbaDesignStatus', { detail: errDetail }));
         try {
           chrome.runtime.sendMessage({ action: 'designStatus', detail: errDetail });
-        } catch (_) {}
+        } catch (_) { }
       }
     } finally {
       // Clean up cursor overlay and restore standard browser cursor
@@ -1433,7 +1988,10 @@
 
   // ─── Public Command Handler ─────────────────────────────────────────────────
 
-  function handleDesignCommand(cmd, duration) {
+  function handleDesignCommand(cmd, duration, cursorSpeed, operationSpeed) {
+    if (cursorSpeed !== undefined) designState.cursorSpeed = parseSpeed(cursorSpeed, designState.cursorSpeed);
+    if (operationSpeed !== undefined) designState.operationSpeed = parseSpeed(operationSpeed, designState.operationSpeed);
+
     switch (cmd) {
       case 'start':
         if (designState.running) {
@@ -1448,7 +2006,7 @@
         designState.pauseStartTime = null;
         designState.abortController = new AbortController();
         if (duration) designState.sessionDuration = duration;
-        runDesignLoop().catch(() => {});
+        runDesignLoop().catch(() => { });
         break;
 
       case 'pause':
@@ -1460,7 +2018,7 @@
         }));
         try {
           chrome.runtime.sendMessage({ action: 'designStatus', detail: { state: 'paused' } });
-        } catch (_) {}
+        } catch (_) { }
         break;
 
       case 'resume':
@@ -1480,7 +2038,7 @@
         }));
         try {
           chrome.runtime.sendMessage({ action: 'designStatus', detail: { state: 'running' } });
-        } catch (_) {}
+        } catch (_) { }
         break;
 
       case 'stop':
@@ -1491,7 +2049,7 @@
           designState.pauseStartTime = null;
         }
         if (designState.abortController) {
-          try { designState.abortController.abort(); } catch (_) {}
+          try { designState.abortController.abort(); } catch (_) { }
         }
         if (designState.pauseResolve) {
           designState.pauseResolve();
@@ -1506,7 +2064,7 @@
             action: 'designStatus',
             detail: { state: 'stopped', totalActions: designState.totalActions }
           });
-        } catch (_) {}
+        } catch (_) { }
         break;
     }
   }
@@ -1515,10 +2073,22 @@
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       if (msg.action === 'designCmd') {
-        handleDesignCommand(msg.cmd, msg.duration);
+        handleDesignCommand(msg.cmd, msg.duration, msg.cursorSpeed, msg.operationSpeed);
         sendResponse({
           ok: true,
-          state: designState.running ? (designState.paused ? 'paused' : 'running') : 'idle'
+          state: designState.running ? (designState.paused ? 'paused' : 'running') : 'idle',
+          cursorSpeed: designState.cursorSpeed,
+          operationSpeed: designState.operationSpeed
+        });
+        return true;
+      }
+      if (msg.action === 'designUpdateSpeed') {
+        if (msg.cursorSpeed !== undefined) designState.cursorSpeed = parseSpeed(msg.cursorSpeed, designState.cursorSpeed);
+        if (msg.operationSpeed !== undefined) designState.operationSpeed = parseSpeed(msg.operationSpeed, designState.operationSpeed);
+        sendResponse({
+          ok: true,
+          cursorSpeed: designState.cursorSpeed,
+          operationSpeed: designState.operationSpeed
         });
         return true;
       }
@@ -1539,6 +2109,8 @@
           platform: designState.platform,
           lastAction: designState.lastAction || 'Ready',
           sessionDuration: designState.sessionDuration,
+          cursorSpeed: designState.cursorSpeed,
+          operationSpeed: designState.operationSpeed,
         });
         return true;
       }
@@ -1548,15 +2120,15 @@
   // ─── Window message listener (ExecuteScript postMessage fallback) ───────────
   window.addEventListener('message', (e) => {
     if (!e.data || e.data.tbaDesign === undefined) return;
-    const { tbaDesign: cmd, duration } = e.data;
-    handleDesignCommand(cmd, duration);
+    const { tbaDesign: cmd, duration, cursorSpeed, operationSpeed } = e.data;
+    handleDesignCommand(cmd, duration, cursorSpeed, operationSpeed);
   });
 
   // ─── Relay design status events → chrome.runtime for popup UI ───────────────
   window.addEventListener('tbaDesignStatus', (e) => {
     try {
       chrome.runtime.sendMessage({ action: 'designStatus', detail: e.detail });
-    } catch (_) {}
+    } catch (_) { }
   });
 
 })();

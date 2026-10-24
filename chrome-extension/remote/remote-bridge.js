@@ -372,12 +372,39 @@ class RemoteControlBridge {
               await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: (payload) => window.postMessage(payload, '*'),
-                args: [{ tbaDesign: data.cmd, duration: data.duration }],
+                args: [{
+                  tbaDesign: data.cmd,
+                  duration: data.duration,
+                  cursorSpeed: data.cursorSpeed,
+                  operationSpeed: data.operationSpeed,
+                }],
               });
             } catch (_) {}
           }
         }
       }
+      return;
+    }
+
+    // ── Design Speed Update (Live Cursor & Operations Speed) ──
+    if (data.action === 'designUpdateSpeed') {
+      const tab = await this._getTargetTab();
+      if (tab?.id) {
+        try {
+          await chrome.tabs.sendMessage(tab.id, data);
+        } catch (_) {}
+      }
+      const toSave = {};
+      if (data.cursorSpeed !== undefined) toSave.tba_design_cursor_speed = data.cursorSpeed;
+      if (data.operationSpeed !== undefined) toSave.tba_design_operation_speed = data.operationSpeed;
+      if (Object.keys(toSave).length > 0) {
+        await chrome.storage.local.set(toSave);
+      }
+      this.broadcastStatus({
+        action: 'designSpeedUpdated',
+        cursorSpeed: data.cursorSpeed,
+        operationSpeed: data.operationSpeed,
+      });
       return;
     }
 
@@ -393,7 +420,7 @@ class RemoteControlBridge {
     return new Promise(async (resolve) => {
       const tab = await this._getTargetTab();
       let typingStatus = { status: 'idle', charIndex: 0, totalChars: 0 };
-      let designStatus = { running: false, paused: false, elapsed: 0, remaining: 3600000, pct: 0, totalActions: 0, platform: 'Detecting...', lastAction: '—' };
+      let designStatus = { running: false, paused: false, elapsed: 0, remaining: 3600000, pct: 0, totalActions: 0, platform: 'Detecting...', lastAction: '—', cursorSpeed: 1.0, operationSpeed: 1.0 };
 
       if (tab?.id) {
         try {
@@ -409,7 +436,8 @@ class RemoteControlBridge {
 
       chrome.storage.local.get([
         'tba_delay', 'tba_linebreak_delay', 'tba_start_delay',
-        'tba_last_text', 'tba_theme', 'tba_human_typo_mode'
+        'tba_last_text', 'tba_theme', 'tba_human_typo_mode',
+        'tba_design_cursor_speed', 'tba_design_operation_speed'
       ], (storageRes) => {
         resolve({
           typing: typingStatus,
@@ -421,6 +449,8 @@ class RemoteControlBridge {
             lastText: storageRes.tba_last_text || '',
             theme: storageRes.tba_theme || 'dark',
             humanTypoMode: storageRes.tba_human_typo_mode !== undefined ? storageRes.tba_human_typo_mode : true,
+            designCursorSpeed: storageRes.tba_design_cursor_speed || 'normal',
+            designOperationSpeed: storageRes.tba_design_operation_speed || 'normal',
           }
         });
       });

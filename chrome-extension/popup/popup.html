@@ -313,6 +313,52 @@
         </div>
       </div>
 
+      <!-- Cursor Movement Speed Control -->
+      <div class="speed-section" style="margin-bottom: 10px;">
+        <div class="speed-header">
+          <label class="section-label">Cursor Movement Speed</label>
+          <div class="speed-display">
+            <span id="design-cursor-speed-value">1.0x</span>
+            <span class="speed-unit" id="design-cursor-speed-unit">Normal</span>
+          </div>
+        </div>
+        <div class="speed-presets design-cursor-speed-presets" role="group" aria-label="Cursor speed presets">
+          <button class="preset-btn" data-speed="slow">Slow</button>
+          <button class="preset-btn active" data-speed="normal">Normal</button>
+          <button class="preset-btn" data-speed="fast">Fast</button>
+          <button class="preset-btn" data-speed="very-fast">Very Fast</button>
+          <button class="preset-btn" data-speed="custom" id="btn-custom-cursor-speed">Custom</button>
+        </div>
+        <div class="custom-speed-panel" id="custom-cursor-speed-panel" style="display:none; margin-top:8px;">
+          <div class="slider-row">
+            <input type="range" id="design-cursor-slider" min="0.4" max="3.5" step="0.1" value="1.0" class="speed-slider" aria-label="Cursor speed multiplier">
+          </div>
+        </div>
+      </div>
+
+      <!-- Operations Speed Control -->
+      <div class="speed-section" style="margin-bottom: 12px;">
+        <div class="speed-header">
+          <label class="section-label">Operations Speed</label>
+          <div class="speed-display">
+            <span id="design-op-speed-value">1.0x</span>
+            <span class="speed-unit" id="design-op-speed-unit">Normal</span>
+          </div>
+        </div>
+        <div class="speed-presets design-op-speed-presets" role="group" aria-label="Operations speed presets">
+          <button class="preset-btn" data-speed="slow">Slow</button>
+          <button class="preset-btn active" data-speed="normal">Normal</button>
+          <button class="preset-btn" data-speed="fast">Fast</button>
+          <button class="preset-btn" data-speed="very-fast">Turbo</button>
+          <button class="preset-btn" data-speed="custom" id="btn-custom-op-speed">Custom</button>
+        </div>
+        <div class="custom-speed-panel" id="custom-op-speed-panel" style="display:none; margin-top:8px;">
+          <div class="slider-row">
+            <input type="range" id="design-op-slider" min="0.4" max="4.0" step="0.1" value="1.0" class="speed-slider" aria-label="Operation speed multiplier">
+          </div>
+        </div>
+      </div>
+
       <!-- Controls -->
       <div class="controls-section">
         <div class="controls-row">

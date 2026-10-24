@@ -625,10 +625,91 @@ const designUI = {
 };
 
 let designSessionDuration    = 3600000; // default 1 hour
+let designCursorSpeed        = 'normal';
+let designOperationSpeed     = 'normal';
 let designTimerInterval      = null;
 let designSessionStart       = null;
 let designPausedAccumulated  = 0;
 let designPauseStart         = null;
+
+const CURSOR_SPEED_LABELS = {
+  'slow': { val: '0.6x', unit: 'Slow' },
+  'normal': { val: '1.0x', unit: 'Normal' },
+  'fast': { val: '1.8x', unit: 'Fast' },
+  'very-fast': { val: '2.8x', unit: 'Very Fast' }
+};
+
+const OP_SPEED_LABELS = {
+  'slow': { val: '0.6x', unit: 'Slow' },
+  'normal': { val: '1.0x', unit: 'Normal' },
+  'fast': { val: '1.8x', unit: 'Fast' },
+  'very-fast': { val: '3.0x', unit: 'Turbo' }
+};
+
+function setCursorSpeedUI(speed) {
+  designCursorSpeed = speed;
+  const isPreset = typeof speed === 'string' && CURSOR_SPEED_LABELS[speed];
+  const displayVal = document.getElementById('design-cursor-speed-value');
+  const displayUnit = document.getElementById('design-cursor-speed-unit');
+
+  if (isPreset) {
+    if (displayVal) displayVal.textContent = CURSOR_SPEED_LABELS[speed].val;
+    if (displayUnit) displayUnit.textContent = CURSOR_SPEED_LABELS[speed].unit;
+    const slider = document.getElementById('design-cursor-slider');
+    if (slider) slider.value = parseFloat(CURSOR_SPEED_LABELS[speed].val);
+  } else {
+    const num = typeof speed === 'number' ? speed : parseFloat(speed) || 1.0;
+    if (displayVal) displayVal.textContent = num.toFixed(1) + 'x';
+    if (displayUnit) displayUnit.textContent = num < 0.8 ? 'Slow' : (num > 2.0 ? 'Turbo' : (num > 1.3 ? 'Fast' : 'Normal'));
+    const slider = document.getElementById('design-cursor-slider');
+    if (slider) slider.value = num;
+  }
+
+  document.querySelectorAll('.design-cursor-speed-presets .preset-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.speed === speed);
+  });
+}
+
+function setOperationSpeedUI(speed) {
+  designOperationSpeed = speed;
+  const isPreset = typeof speed === 'string' && OP_SPEED_LABELS[speed];
+  const displayVal = document.getElementById('design-op-speed-value');
+  const displayUnit = document.getElementById('design-op-speed-unit');
+
+  if (isPreset) {
+    if (displayVal) displayVal.textContent = OP_SPEED_LABELS[speed].val;
+    if (displayUnit) displayUnit.textContent = OP_SPEED_LABELS[speed].unit;
+    const slider = document.getElementById('design-op-slider');
+    if (slider) slider.value = parseFloat(OP_SPEED_LABELS[speed].val);
+  } else {
+    const num = typeof speed === 'number' ? speed : parseFloat(speed) || 1.0;
+    if (displayVal) displayVal.textContent = num.toFixed(1) + 'x';
+    if (displayUnit) displayUnit.textContent = num < 0.8 ? 'Slow' : (num > 2.2 ? 'Turbo' : (num > 1.3 ? 'Fast' : 'Normal'));
+    const slider = document.getElementById('design-op-slider');
+    if (slider) slider.value = num;
+  }
+
+  document.querySelectorAll('.design-op-speed-presets .preset-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.speed === speed);
+  });
+}
+
+async function dispatchDesignSpeedUpdate() {
+  chrome.storage.local.set({
+    tba_design_cursor_speed: designCursorSpeed,
+    tba_design_operation_speed: designOperationSpeed
+  });
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'designUpdateSpeed',
+        cursorSpeed: designCursorSpeed,
+        operationSpeed: designOperationSpeed
+      });
+    }
+  } catch (_) {}
+}
 
 function initDesignUI() {
   designUI.statusBadge   = document.getElementById('design-status-badge');
@@ -646,6 +727,64 @@ function initDesignUI() {
   designUI.btnResume     = document.getElementById('design-btn-resume');
   designUI.btnStop       = document.getElementById('design-btn-stop');
   designUI.durationChips = document.querySelectorAll('.design-duration-chips .delay-chip');
+
+  // Load saved speeds from storage
+  chrome.storage.local.get(['tba_design_cursor_speed', 'tba_design_operation_speed'], (res) => {
+    if (res.tba_design_cursor_speed) {
+      setCursorSpeedUI(res.tba_design_cursor_speed);
+    }
+    if (res.tba_design_operation_speed) {
+      setOperationSpeedUI(res.tba_design_operation_speed);
+    }
+  });
+
+  // Cursor Speed Preset Buttons
+  document.querySelectorAll('.design-cursor-speed-presets .preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sp = btn.dataset.speed;
+      if (sp === 'custom') {
+        const customPanel = document.getElementById('custom-cursor-speed-panel');
+        if (customPanel) customPanel.style.display = customPanel.style.display === 'none' ? 'block' : 'none';
+        return;
+      }
+      setCursorSpeedUI(sp);
+      dispatchDesignSpeedUpdate();
+    });
+  });
+
+  // Cursor Slider
+  const cursorSlider = document.getElementById('design-cursor-slider');
+  if (cursorSlider) {
+    cursorSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      setCursorSpeedUI(val);
+      dispatchDesignSpeedUpdate();
+    });
+  }
+
+  // Operation Speed Preset Buttons
+  document.querySelectorAll('.design-op-speed-presets .preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sp = btn.dataset.speed;
+      if (sp === 'custom') {
+        const customPanel = document.getElementById('custom-op-speed-panel');
+        if (customPanel) customPanel.style.display = customPanel.style.display === 'none' ? 'block' : 'none';
+        return;
+      }
+      setOperationSpeedUI(sp);
+      dispatchDesignSpeedUpdate();
+    });
+  });
+
+  // Operation Slider
+  const opSlider = document.getElementById('design-op-slider');
+  if (opSlider) {
+    opSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      setOperationSpeedUI(val);
+      dispatchDesignSpeedUpdate();
+    });
+  }
 
   // Duration chip selection
   designUI.durationChips.forEach(chip => {
@@ -699,6 +838,8 @@ async function sendDesignCmd(cmd) {
       action: 'designCmd',
       cmd,
       duration: designSessionDuration,
+      cursorSpeed: designCursorSpeed,
+      operationSpeed: designOperationSpeed,
     });
   } catch (_) {}
 
@@ -707,7 +848,12 @@ async function sendDesignCmd(cmd) {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: (data) => window.postMessage(data, '*'),
-      args: [{ tbaDesign: cmd, duration: designSessionDuration }],
+      args: [{
+        tbaDesign: cmd,
+        duration: designSessionDuration,
+        cursorSpeed: designCursorSpeed,
+        operationSpeed: designOperationSpeed,
+      }],
     });
   } catch (_) {}
 

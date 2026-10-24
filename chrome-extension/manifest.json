@@ -77,7 +77,8 @@
       "resources": [
         "assets/*",
         "content/design-engine.js",
-        "remote/*"
+        "remote/*",
+        "lib/*"
       ],
       "matches": [
         "<all_urls>"

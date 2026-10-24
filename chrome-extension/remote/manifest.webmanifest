@@ -1,0 +1,32 @@
+{
+  "name": "TypeByAman Mobile Remote",
+  "short_name": "TypeByAman",
+  "description": "Control TypeByAman Chrome Extension remotely with real-time controls, built-in QR scanner, typing and design modes.",
+  "start_url": "./remote.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "orientation": "portrait-primary",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "assets/icon48.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
