@@ -51,16 +51,54 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
+import '../remote/remote-bridge.js';
+
+const remoteBridge = globalThis.remoteBridge;
+
+// Initialize remote bridge for QR-code mobile control
+if (remoteBridge) {
+  remoteBridge.init().catch((err) => {
+    console.warn('[TypeByAman] Remote bridge init warning:', err);
+  });
+}
+
 // ─── Message Relay ──────────────────────────────────────────────────────────
 
 /**
  * Forward messages from content scripts to all extension views
- * (popup, options page) so they can update their UI.
+ * (popup, options page) and to connected remote mobile devices.
  */
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  // Relay status/typing events and Design Mode events from content → popup
+  // Remote bridge request handlers from popup
+  if (msg.action === 'getRemoteUrl') {
+    sendResponse({
+      url: remoteBridge ? remoteBridge.getRemoteUrl() : '',
+      sessionId: remoteBridge ? remoteBridge.sessionId : '',
+      connected: remoteBridge ? remoteBridge.remoteDeviceConnected : false,
+    });
+    return false;
+  }
+
+  if (msg.action === 'regenerateRemoteSession') {
+    if (remoteBridge) {
+      remoteBridge.regenerateSession().then((newId) => {
+        sendResponse({
+          url: remoteBridge.getRemoteUrl(),
+          sessionId: newId,
+        });
+      });
+      return true; // Keep channel open for async response
+    }
+  }
+
+  // Relay status/typing events and Design Mode events from content → popup & mobile remote
   const RELAY_ACTIONS = ['statusUpdate', 'targetPicked', 'typingDone', 'typingError', 'designStatus'];
   if (RELAY_ACTIONS.includes(msg.action)) {
+    // Broadcast to remote device connected via QR code
+    if (remoteBridge && typeof remoteBridge.broadcastStatus === 'function') {
+      remoteBridge.broadcastStatus(msg);
+    }
+
     // Broadcast to all extension pages (popup, options)
     chrome.runtime.sendMessage(msg).catch(() => {
       // Popup might be closed — that's fine
@@ -70,3 +108,4 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   sendResponse({ relayed: true });
   return false;
 });
+

@@ -353,6 +353,10 @@ export function useGlassCounter(initialValue = 0, step = 1) {
   }
 
   // --- Typing Loop ---
+  let currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
+  let charsSinceLastThink5s = 0;
+  let nextThink5sThreshold = 140 + Math.floor(Math.random() * 160);
+
   function typeNextCharacter() {
     if (state.status !== 'typing') return;
 
@@ -364,19 +368,45 @@ export function useGlassCounter(initialValue = 0, step = 1) {
 
     const nextChar = state.currentText[state.charIndex];
     state.charIndex++;
+    charsSinceLastThink5s++;
 
     renderView();
     sound.playClick(nextChar);
 
-    let delay = state.charDelay;
-    if (nextChar === '\n' && state.lineBreakDelay > 0) {
-      delay += state.lineBreakDelay;
+    const isWordBoundary = nextChar === ' ' || nextChar === '\t';
+    const isPunctuation = /[.,!?:;]/.test(nextChar);
+    const isLineBreak = nextChar === '\n';
+
+    // ── 5-Second Human Thinking Pause ──
+    // "while typing somewhere wait for 5 seconds and then continue writing"
+    if (charsSinceLastThink5s >= nextThink5sThreshold && (isWordBoundary || isPunctuation || isLineBreak)) {
+      charsSinceLastThink5s = 0;
+      nextThink5sThreshold = 150 + Math.floor(Math.random() * 180);
+      currentWordTempo = Math.random() < 0.4 ? 'fast' : (Math.random() < 0.25 ? 'deliberate' : 'normal');
+      const think5s = 4700 + Math.floor(Math.random() * 600);
+      state.activeTimeout = setTimeout(typeNextCharacter, think5s);
+      return;
     }
 
-    // Dynamic micro jitter (1-5ms) to give natural human feel if delay > 25
-    if (delay > 25) {
-      const jitter = (Math.random() * 8) - 4;
-      delay = Math.max(1, Math.round(delay + jitter));
+    if (isWordBoundary) {
+      // Switch word tempo: some words fast, some words deliberate
+      currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
+    }
+
+    // Dynamic tempo multiplier (never constant)
+    let tempoMult = 1.0;
+    if (currentWordTempo === 'fast') {
+      tempoMult = 0.40 + Math.random() * 0.22; // fast burst word
+    } else if (currentWordTempo === 'deliberate') {
+      tempoMult = 1.45 + Math.random() * 0.65; // deliberate word
+    } else {
+      tempoMult = 0.80 + Math.random() * 0.40; // normal variation
+    }
+
+    let delay = Math.max(15, Math.round(state.charDelay * tempoMult * (0.80 + Math.random() * 0.40)));
+
+    if (isLineBreak && state.lineBreakDelay > 0) {
+      delay += Math.round(state.lineBreakDelay * (0.85 + Math.random() * 0.30));
     }
 
     state.activeTimeout = setTimeout(typeNextCharacter, delay);

@@ -207,6 +207,9 @@ function switchTab(tabName) {
     panel.style.display = isActive ? 'block' : 'none';
     panel.classList.toggle('active', isActive);
   });
+  if (tabName === 'remote' && currentRemoteUrl) {
+    renderQRCode(currentRemoteUrl);
+  }
 }
 
 // ─── Status Updates ──────────────────────────────────────────────────────────
@@ -594,6 +597,10 @@ https://github.com/Amankr0075/TypeByAman`;
     if (msg.action === 'designStatus') {
       handleDesignStatus(msg.detail || {});
     }
+    // ── Remote Device Connected ─────────────────────────────────
+    if (msg.action === 'remoteDeviceConnected') {
+      setRemoteConnected(true, msg.device);
+    }
   });
 }
 
@@ -617,9 +624,11 @@ const designUI = {
   durationChips:  null,
 };
 
-let designSessionDuration = 3600000; // default 1 hour
-let designTimerInterval   = null;
-let designSessionStart    = null;
+let designSessionDuration    = 3600000; // default 1 hour
+let designTimerInterval      = null;
+let designSessionStart       = null;
+let designPausedAccumulated  = 0;
+let designPauseStart         = null;
 
 function initDesignUI() {
   designUI.statusBadge   = document.getElementById('design-status-badge');
@@ -657,6 +666,9 @@ function initDesignUI() {
 
   // Detect platform on current tab
   detectDesignPlatform();
+
+  // Sync state if design mode is already running or paused
+  syncDesignStatus();
 }
 
 function formatTime(ms) {
@@ -681,36 +693,50 @@ async function sendDesignCmd(cmd) {
     // Already injected or injection failed — proceed anyway
   }
 
-  // Post message into the page context via scripting.executeScript
-  const payload = { tbaDesign: cmd };
-  if (cmd === 'start') payload.duration = designSessionDuration;
+  // 1. Direct Chrome runtime tab messaging (Primary, reliable)
+  try {
+    await chrome.tabs.sendMessage(tab.id, {
+      action: 'designCmd',
+      cmd,
+      duration: designSessionDuration,
+    });
+  } catch (_) {}
 
+  // 2. Post message into the page context fallback
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: (data) => window.postMessage(data, '*'),
-      args: [payload],
+      args: [{ tbaDesign: cmd, duration: designSessionDuration }],
     });
-  } catch (err) {
-    console.warn('[TypeByAman] Design cmd failed:', err);
-  }
+  } catch (_) {}
 
   // Optimistically update UI
   if (cmd === 'start') {
     designSessionStart = Date.now();
+    designPausedAccumulated = 0;
+    designPauseStart = null;
     startDesignTimer();
     setDesignButtons('running');
     setDesignBadge('running');
   } else if (cmd === 'pause') {
+    designPauseStart = Date.now();
     clearDesignTimer();
     setDesignButtons('paused');
     setDesignBadge('paused');
   } else if (cmd === 'resume') {
+    if (designPauseStart) {
+      designPausedAccumulated += (Date.now() - designPauseStart);
+      designPauseStart = null;
+    }
     startDesignTimer();
     setDesignButtons('running');
     setDesignBadge('running');
   } else if (cmd === 'stop') {
     clearDesignTimer();
+    designSessionStart = null;
+    designPausedAccumulated = 0;
+    designPauseStart = null;
     setDesignButtons('idle');
     setDesignBadge('stopped');
   }
@@ -720,7 +746,9 @@ function startDesignTimer() {
   clearDesignTimer();
   designTimerInterval = setInterval(() => {
     if (!designSessionStart) return;
-    const elapsed   = Date.now() - designSessionStart;
+    const now = Date.now();
+    const currentPaused = designPauseStart ? (now - designPauseStart) : 0;
+    const elapsed   = Math.max(0, now - designSessionStart - designPausedAccumulated - currentPaused);
     const remaining = Math.max(0, designSessionDuration - elapsed);
     const pct       = Math.min(100, Math.round((elapsed / designSessionDuration) * 100));
 
@@ -768,7 +796,15 @@ function handleDesignStatus(detail) {
     designUI.remaining.textContent = formatTime(remaining);
   }
 
-  if (state === 'done') {
+  if (state === 'running') {
+    setDesignButtons('running');
+    setDesignBadge('running');
+    if (!designTimerInterval) startDesignTimer();
+  } else if (state === 'paused') {
+    clearDesignTimer();
+    setDesignButtons('paused');
+    setDesignBadge('paused');
+  } else if (state === 'done') {
     clearDesignTimer();
     setDesignButtons('idle');
     setDesignBadge('done');
@@ -794,11 +830,28 @@ function setDesignButtons(state) {
   if (!designUI.btnStart) return;
   const running = state === 'running';
   const paused  = state === 'paused';
-  const idle    = state === 'idle';
+  const idle    = state === 'idle' || state === 'stopped' || state === 'done' || state === 'error';
   designUI.btnStart.disabled  = !idle;
   designUI.btnPause.disabled  = !running;
   designUI.btnResume.disabled = !paused;
   designUI.btnStop.disabled   = idle;
+}
+
+async function syncDesignStatus() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+    const res = await chrome.tabs.sendMessage(tab.id, { action: 'designGetStatus' });
+    if (res && (res.running || res.paused)) {
+      if (res.sessionDuration) designSessionDuration = res.sessionDuration;
+      if (res.elapsed !== undefined) {
+        designSessionStart = Date.now() - res.elapsed;
+        designPausedAccumulated = 0;
+        designPauseStart = res.paused ? Date.now() : null;
+      }
+      handleDesignStatus(res);
+    }
+  } catch (_) {}
 }
 
 async function detectDesignPlatform() {
@@ -821,9 +874,144 @@ async function detectDesignPlatform() {
   } catch (_) {}
 }
 
+// ─── Remote Control & QR Code ───────────────────────────────────────────────
+
+let currentRemoteUrl = '';
+let currentRemoteSessionId = '';
+
+const remoteUI = {
+  qrContainer: $('qr-code-container'),
+  sessionText: $('qr-session-text'),
+  statusText: $('qr-status-text'),
+  livePill: $('remote-live-pill'),
+  connLabel: $('remote-conn-label'),
+  btnCopyUrl: $('btn-copy-remote-url'),
+  btnCopyText: $('btn-copy-remote-text'),
+  btnRegenQr: $('btn-regen-qr'),
+  btnOpenTab: $('btn-open-remote-tab'),
+};
+
+function renderQRCode(url) {
+  if (!remoteUI.qrContainer || !url) return;
+  if (typeof QRCode !== 'undefined' && typeof QRCode.toSVG === 'function') {
+    remoteUI.qrContainer.innerHTML = QRCode.toSVG(url, {
+      size: 170,
+      color: '#0f172a',
+      background: '#ffffff',
+      margin: 1,
+    });
+  } else {
+    remoteUI.qrContainer.textContent = 'Generating QR...';
+  }
+}
+
+async function loadRemoteSession() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ action: 'getRemoteUrl' }, (response) => {
+      if (response && response.url) {
+        currentRemoteUrl = response.url;
+        currentRemoteSessionId = response.sessionId;
+        if (remoteUI.sessionText) remoteUI.sessionText.textContent = response.sessionId;
+        renderQRCode(response.url);
+        if (response.connected) {
+          setRemoteConnected(true);
+        }
+      } else if (typeof globalThis.remoteBridge !== 'undefined') {
+        const url = globalThis.remoteBridge.getRemoteUrl();
+        const sid = globalThis.remoteBridge.sessionId;
+        currentRemoteUrl = url;
+        currentRemoteSessionId = sid;
+        if (remoteUI.sessionText) remoteUI.sessionText.textContent = sid;
+        renderQRCode(url);
+      }
+      resolve();
+    });
+  });
+}
+
+function setRemoteConnected(connected, deviceName) {
+  if (remoteUI.livePill) {
+    remoteUI.livePill.classList.toggle('connected', !!connected);
+  }
+  if (remoteUI.connLabel) {
+    remoteUI.connLabel.textContent = connected ? 'Connected' : 'Ready';
+  }
+  if (remoteUI.statusText) {
+    remoteUI.statusText.textContent = connected
+      ? `Active: ${deviceName || 'Phone/Tablet'}`
+      : 'Waiting for phone to scan...';
+    remoteUI.statusText.style.color = connected ? 'var(--accent-green)' : 'var(--text-primary)';
+  }
+}
+
+function initRemoteUI() {
+  if (!remoteUI.qrContainer) return;
+
+  loadRemoteSession();
+
+  // Copy remote link button
+  if (remoteUI.btnCopyUrl) {
+    remoteUI.btnCopyUrl.addEventListener('click', async () => {
+      if (!currentRemoteUrl) return;
+      try {
+        await navigator.clipboard.writeText(currentRemoteUrl);
+        if (remoteUI.btnCopyText) {
+          const original = remoteUI.btnCopyText.textContent;
+          remoteUI.btnCopyText.textContent = 'Copied!';
+          setTimeout(() => {
+            remoteUI.btnCopyText.textContent = original;
+          }, 2000);
+        }
+      } catch (_) {
+        const ta = document.createElement('textarea');
+        ta.value = currentRemoteUrl;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+    });
+  }
+
+  // Regenerate QR
+  if (remoteUI.btnRegenQr) {
+    remoteUI.btnRegenQr.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'regenerateRemoteSession' }, (res) => {
+        if (res && res.url) {
+          currentRemoteUrl = res.url;
+          currentRemoteSessionId = res.sessionId;
+          if (remoteUI.sessionText) remoteUI.sessionText.textContent = res.sessionId;
+          renderQRCode(res.url);
+          setRemoteConnected(false);
+        }
+      });
+    });
+  }
+
+  // Open in browser tab
+  if (remoteUI.btnOpenTab) {
+    remoteUI.btnOpenTab.addEventListener('click', () => {
+      if (currentRemoteUrl) {
+        chrome.tabs.create({ url: currentRemoteUrl });
+      }
+    });
+  }
+
+  // Listen to remote bridge events
+  if (typeof globalThis.remoteBridge !== 'undefined') {
+    globalThis.remoteBridge.addListener((event) => {
+      if (event.type === 'deviceConnected') {
+        setRemoteConnected(true, event.device);
+      }
+    });
+  }
+}
+
 // ─── Boot ────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
   init();
   initDesignUI();
+  initRemoteUI();
 });
+

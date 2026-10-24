@@ -132,6 +132,11 @@ export class TypingEngine {
       let lastMinorTypoTime = Date.now();
       let nextMinorTypoInterval = 10000 + Math.random() * 4000; // ~12 seconds for minor key slip
 
+      // Dynamic word tempo & 5-second human thinking pause tracker
+      let currentWordTempo: 'fast' | 'deliberate' | 'normal' = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
+      let charsSinceLastThink5s = 0;
+      let nextThink5sThreshold = 140 + Math.floor(Math.random() * 160); // every ~25–55 words
+
       for (let i = 0; i < total; i++) {
         if (signal.aborted || this._stopped) break;
 
@@ -141,6 +146,28 @@ export class TypingEngine {
 
         this._charIndex = i;
         const ch = text[i];
+        charsSinceLastThink5s++;
+
+        // Word boundary & punctuation detection
+        const isWordBoundary = ch === ' ' || ch === '\t';
+        const isPunctuation = /[.,!?:;]/.test(ch);
+        const isLineBreak = ch === '\n' || ch === '\r';
+
+        // ── 5-Second Human Thinking Pause ──────────────────────────────────────
+        // "while typing somewhere wait for 5 seconds and then continue writing"
+        if (charsSinceLastThink5s >= nextThink5sThreshold && (isWordBoundary || isPunctuation || isLineBreak) && !signal.aborted && !this._stopped) {
+          charsSinceLastThink5s = 0;
+          nextThink5sThreshold = 150 + Math.floor(Math.random() * 180);
+          NativeCursorBridge.getInstance().wander(35, 20).catch(() => {});
+          const think5s = 4700 + Math.floor(Math.random() * 600); // 4.7s – 5.3s (~5 seconds)
+          await this._sleep(think5s, signal);
+          if (signal.aborted || this._stopped) break;
+          // After 5s pause, pick a fresh word tempo
+          currentWordTempo = Math.random() < 0.4 ? 'fast' : (Math.random() < 0.25 ? 'deliberate' : 'normal');
+        } else if (isWordBoundary) {
+          // Switch tempo on word boundary: some words fast, some words deliberate
+          currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
+        }
 
         const now = Date.now();
         const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
@@ -287,10 +314,9 @@ export class TypingEngine {
           this.config.onProgress(i + 1, total);
         }
 
-        // Delay: Gaussian human keystroke dynamics
-        const isLineBreak = ch === '\n' || ch === '\r';
+        // Delay: Gaussian human keystroke dynamics (NEVER CONSTANT)
         const baseDelay = isLineBreak ? (lineBreakDelay || 250) : this.config.delay;
-        const totalDelay = this._getHumanKeystrokeDelay(ch, baseDelay);
+        const totalDelay = this._getHumanKeystrokeDelay(ch, baseDelay, currentWordTempo);
         if (totalDelay > 0 && !signal.aborted) {
           await this._sleep(totalDelay, signal);
         }
@@ -381,34 +407,46 @@ export class TypingEngine {
   /**
    * Calculates realistic human keystroke timing with log-normal Gaussian jitter,
    * symbol/bracket latency, Shift modifier delays, and inter-word rhythm.
+   * Speed continuously varies so no detection software matches a constant cadence.
    */
-  private _getHumanKeystrokeDelay(ch: string, baseDelay: number): number {
-    // 1. Log-normal Gaussian jitter around base delay: ±30%
-    let delay = baseDelay * (0.75 + Math.random() * 0.5);
+  private _getHumanKeystrokeDelay(ch: string, baseDelay: number, tempo: 'fast' | 'deliberate' | 'normal' = 'normal'): number {
+    // 1. Word tempo multiplier: some words typed fast, some deliberate
+    let tempoMultiplier: number;
+    if (tempo === 'fast') {
+      tempoMultiplier = 0.38 + Math.random() * 0.22; // 0.38x–0.60x (fast burst)
+    } else if (tempo === 'deliberate') {
+      tempoMultiplier = 1.45 + Math.random() * 0.70; // 1.45x–2.15x (deliberate)
+    } else {
+      tempoMultiplier = 0.78 + Math.random() * 0.44; // 0.78x–1.22x (standard)
+    }
 
-    // 2. Uppercase requires holding Shift: +40ms–80ms
+    // 2. Log-normal Gaussian jitter around base delay: ±35%
+    let delay = baseDelay * tempoMultiplier * (0.80 + Math.random() * 0.40);
+
+    // 3. Uppercase requires holding Shift: +35ms–75ms
     if (ch >= 'A' && ch <= 'Z') {
-      delay += 40 + Math.random() * 40;
+      delay += 35 + Math.random() * 40;
     }
-    // 3. Punctuation, braces, brackets, and operators require reaching: +50ms–110ms
+    // 4. Punctuation, braces, brackets, and operators require reaching: +45ms–95ms
     else if (/[{}()[\];:,.=+\-*\/&|!<>?]/.test(ch)) {
-      delay += 50 + Math.random() * 60;
+      delay += 45 + Math.random() * 50;
     }
-    // 4. Numbers on top row: +30ms–60ms
+    // 5. Numbers on top row: +25ms–55ms
     else if (/[0-9]/.test(ch)) {
-      delay += 30 + Math.random() * 30;
+      delay += 25 + Math.random() * 30;
     }
-    // 5. Space between words: slight cognitive transition
+    // 6. Space between words: slight cognitive transition
     else if (ch === ' ') {
-      delay += 25 + Math.random() * 35;
+      delay += 25 + Math.random() * 40;
     }
 
-    // 6. Occasional human hesitation (5% chance of a slight 150-300ms pause)
-    if (Math.random() < 0.05) {
-      delay += 150 + Math.random() * 150;
+    // 7. Occasional human hesitation (6% chance of a slight 130-260ms pause)
+    if (Math.random() < 0.06) {
+      delay += 130 + Math.random() * 130;
     }
 
-    return Math.max(15, Math.round(delay));
+    const minDelay = baseDelay <= 10 ? 2 : Math.min(15, Math.round(baseDelay * 0.3));
+    return Math.max(minDelay, Math.round(delay));
   }
 
   /**

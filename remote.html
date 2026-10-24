@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>TypeByAman — Mobile Remote Control & Settings</title>
+  <meta name="description" content="Control TypeByAman Chrome Extension remotely from any phone or device." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(22, 28, 45, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.4);
+      --accent: #8b5cf6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 14px;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      padding-bottom: 30px;
+    }
+
+    /* Header */
+    header {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 14px var(--primary-glow);
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .conn-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+    }
+
+    .conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warning);
+      box-shadow: 0 0 8px var(--warning);
+      animation: pulse 1.8s infinite;
+    }
+
+    .conn-status.connected .conn-dot {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: none;
+    }
+
+    .conn-status.disconnected .conn-dot {
+      background: var(--danger);
+      box-shadow: 0 0 8px var(--danger);
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      background: rgba(255, 255, 255, 0.03);
+      margin: 14px 16px 0;
+      border-radius: 12px;
+      padding: 4px;
+      border: 1px solid var(--card-border);
+      gap: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    /* Content Area */
+    .container {
+      padding: 16px;
+      flex: 1;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .panel {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(12px);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Textarea */
+    textarea {
+      width: 100%;
+      height: 110px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 13px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      border-color: var(--primary);
+    }
+
+    /* Progress bar */
+    .progress-box {
+      margin-top: 12px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-family: var(--mono);
+    }
+
+    .progress-bar-track {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      transition: width 0.3s ease;
+      border-radius: 4px;
+    }
+
+    /* Chips */
+    .chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .chip {
+      padding: 7px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* Status Grid */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stat-card {
+      background: rgba(0, 0, 0, 0.25);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .stat-lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-val {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--mono);
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-idle    { background: rgba(156, 163, 175, 0.15); color: #9ca3af; }
+    .badge-running { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .badge-paused  { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .badge-done    { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+
+    /* Switch */
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .switch-row:last-child {
+      border-bottom: none;
+    }
+
+    .switch-label {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .switch-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Slider input */
+    .range-row {
+      margin-top: 10px;
+    }
+
+    .range-input {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .range-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--primary-glow);
+    }
+
+    .session-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: var(--text-muted);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(40px);
+      background: rgba(15, 23, 42, 0.95);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--card-border);
+      opacity: 0;
+      transition: all 0.25s ease;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+          <line x1="12" y1="18" x2="12.01" y2="18"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">TypeByAman</div>
+        <div class="brand-subtitle">Mobile Remote</div>
+      </div>
+    </div>
+    <div class="conn-status" id="conn-status-badge">
+      <span class="conn-dot"></span>
+      <span id="conn-status-text">Connecting…</span>
+    </div>
+  </header>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-panel="panel-typing">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+      Typing
+    </button>
+    <button class="tab-btn" data-panel="panel-design">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="12 8 8 12 12 16 16 12 12 8"/></svg>
+      Design
+    </button>
+    <button class="tab-btn" data-panel="panel-settings">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+
+  <div class="container">
+
+    <!-- ════════════ PANEL: TYPING ════════════ -->
+    <div id="panel-typing" class="panel active">
+
+      <!-- Status Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Live Typing State</span>
+          <span class="badge-status badge-idle" id="typing-badge">Idle</span>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-lbl">Progress</div>
+            <div class="stat-val" id="typing-pct">0%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">Characters</div>
+            <div class="stat-val" id="typing-chars">0 / 0</div>
+          </div>
+        </div>
+
+        <div class="progress-box">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="typing-progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card">
+        <div class="card-title">Remote Actions</div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btn-remote-start">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start
+          </button>
+          <button class="btn btn-warning" id="btn-remote-pause" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            Pause
+          </button>
+          <button class="btn btn-success" id="btn-remote-resume" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Resume
+          </button>
+          <button class="btn btn-danger" id="btn-remote-stop" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14"/></svg>
+            Stop
+          </button>
+        </div>
+      </div>
+
+      <!-- Speed Presets -->
+      <div class="card">
+        <div class="card-title">
+          <span>Typing Speed Mode</span>
+          <span class="session-badge" id="speed-indicator">50 ms/char</span>
+        </div>
+        <div class="chip-group" id="speed-chip-group">
+          <button class="chip" data-delay="1000">Very Slow (1000ms)</button>
+          <button class="chip" data-delay="250">Slow (250ms)</button>
+          <button class="chip active" data-delay="50">Normal (50ms)</button>
+          <button class="chip" data-delay="20">Fast (20ms)</button>
+          <button class="chip" data-delay="5">Very Fast (5ms)</button>
+        </div>
+        <div class="range-row">
+          <input type="range" min="1" max="500" value="50" class="range-input" id="remote-speed-slider">
+        </div>
+      </div>
+
+      <!-- Source Text -->
+      <div class="card">
+        <div class="card-title">
+          <span>Source Text to Type</span>
+          <button class="chip" id="btn-sync-text">Push to PC</button>
+        </div>
+        <textarea id="remote-text" placeholder="Type or paste text here to send to your computer…"></textarea>
+      </div>
+
+    </div>
+
+    <!-- ════════════ PANEL: DESIGN ════════════ -->
+    <div id="panel-design" class="panel">
+
+      <!-- Design Status Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Design Mode</span>
+          <span class="badge-status badge-idle" id="design-badge">Idle</span>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-lbl">Platform</div>
+            <div class="stat-val" id="design-platform" style="font-size:13px;">Detecting…</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">Actions Completed</div>
+            <div class="stat-val" id="design-actions">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">Elapsed</div>
+            <div class="stat-val" id="design-elapsed">0:00:00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">Remaining</div>
+            <div class="stat-val" id="design-remaining">1:00:00</div>
+          </div>
+        </div>
+
+        <div class="progress-box">
+          <div class="progress-meta">
+            <span>Last action: <strong id="design-last-action" style="color:#fff;">—</strong></span>
+            <span id="design-pct">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="design-progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Design Controls -->
+      <div class="card">
+        <div class="card-title">Design Controls</div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btn-design-start">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start
+          </button>
+          <button class="btn btn-warning" id="btn-design-pause" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            Pause
+          </button>
+          <button class="btn btn-success" id="btn-design-resume" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Resume
+          </button>
+          <button class="btn btn-danger" id="btn-design-stop" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14"/></svg>
+            Stop
+          </button>
+        </div>
+      </div>
+
+      <!-- Duration -->
+      <div class="card">
+        <div class="card-title">Session Duration</div>
+        <div class="chip-group" id="design-duration-chips">
+          <button class="chip" data-duration="900000">15 min</button>
+          <button class="chip" data-duration="1800000">30 min</button>
+          <button class="chip active" data-duration="3600000">1 hour</button>
+          <button class="chip" data-duration="7200000">2 hours</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ════════════ PANEL: SETTINGS ════════════ -->
+    <div id="panel-settings" class="panel">
+
+      <div class="card">
+        <div class="card-title">
+          <span>Extension Preferences</span>
+          <span class="session-badge" id="session-tag">Session ID</span>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">Human Typo &amp; Mistake Simulation</div>
+            <div class="switch-sub">Mimics human mistakes and self-corrections</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="set-typo-mode" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">Auto-Scroll to Target</div>
+            <div class="switch-sub">Scrolls page into view before typing</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="set-auto-scroll" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">Line Break Delay (ms)</div>
+            <div class="switch-sub" id="lbl-line-delay">250 ms</div>
+          </div>
+          <div style="width: 120px;">
+            <input type="range" min="0" max="1000" step="50" value="250" class="range-input" id="set-line-delay">
+          </div>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">Start Delay (seconds)</div>
+            <div class="switch-sub" id="lbl-start-delay">0 s</div>
+          </div>
+          <div style="width: 120px;">
+            <input type="range" min="0" max="10" step="1" value="0" class="range-input" id="set-start-delay">
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <button class="btn btn-primary" id="btn-save-settings" style="width:100%;">
+            Save &amp; Sync to Desktop
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="toast">Connected</div>
+
+  <script>
+    'use strict';
+
+    // ─── Minimal MQTT over WebSocket for Mobile ───────────────────────────────
+    class MobileMqttClient {
+      constructor(brokerUrl, clientId) {
+        this.brokerUrl = brokerUrl;
+        this.clientId = clientId || ('tba_m_' + Math.random().toString(36).slice(2, 8));
+        this.ws = null;
+        this.connected = false;
+        this.subscriptions = new Set();
+        this.onMessage = null;
+        this.onConnect = null;
+        this.onDisconnect = null;
+        this.pingTimer = null;
+      }
+
+      connect() {
+        try {
+          this.ws = new WebSocket(this.brokerUrl, 'mqtt');
+          this.ws.binaryType = 'arraybuffer';
+
+          this.ws.onopen = () => this._sendConnect();
+          this.ws.onmessage = (e) => this._handleData(new Uint8Array(e.data));
+          this.ws.onclose = () => {
+            this.connected = false;
+            clearInterval(this.pingTimer);
+            if (this.onDisconnect) this.onDisconnect();
+            setTimeout(() => this.connect(), 4000);
+          };
+          this.ws.onerror = () => { try { this.ws.close(); } catch (_) {} };
+        } catch (_) {
+          setTimeout(() => this.connect(), 4000);
+        }
+      }
+
+      subscribe(topic) {
+        this.subscriptions.add(topic);
+        if (this.connected) this._sendSubscribe(topic);
+      }
+
+      publish(topic, payloadObj) {
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        const payloadStr = typeof payloadObj === 'string' ? payloadObj : JSON.stringify(payloadObj);
+        const topicBytes = new TextEncoder().encode(topic);
+        const payloadBytes = new TextEncoder().encode(payloadStr);
+
+        const remLen = 2 + topicBytes.length + payloadBytes.length;
+        const packet = [0x30];
+        packet.push(...this._encodeLength(remLen));
+        packet.push((topicBytes.length >> 8) & 0xff, topicBytes.length & 0xff);
+        packet.push(...topicBytes);
+        packet.push(...payloadBytes);
+
+        try { this.ws.send(new Uint8Array(packet)); } catch (_) {}
+      }
+
+      _sendConnect() {
+        const protoBytes = [0, 4, 77, 81, 84, 84, 4];
+        const flags = 0x02;
+        const keepAlive = 60;
+        const clientBytes = new TextEncoder().encode(this.clientId);
+        const remLen = protoBytes.length + 1 + 2 + 2 + clientBytes.length;
+        const packet = [0x10];
+        packet.push(...this._encodeLength(remLen));
+        packet.push(...protoBytes);
+        packet.push(flags);
+        packet.push((keepAlive >> 8) & 0xff, keepAlive & 0xff);
+        packet.push((clientBytes.length >> 8) & 0xff, clientBytes.length & 0xff);
+        packet.push(...clientBytes);
+        this.ws.send(new Uint8Array(packet));
+      }
+
+      _sendSubscribe(topic) {
+        const topicBytes = new TextEncoder().encode(topic);
+        const packet = [0x82];
+        const remLen = 2 + 2 + topicBytes.length + 1;
+        packet.push(...this._encodeLength(remLen));
+        packet.push(0, 1);
+        packet.push((topicBytes.length >> 8) & 0xff, topicBytes.length & 0xff);
+        packet.push(...topicBytes);
+        packet.push(0);
+        this.ws.send(new Uint8Array(packet));
+      }
+
+      _handleData(bytes) {
+        if (bytes.length < 2) return;
+        const type = bytes[0] >> 4;
+        if (type === 2 && bytes[3] === 0) {
+          this.connected = true;
+          clearInterval(this.pingTimer);
+          this.pingTimer = setInterval(() => {
+            if (this.connected && this.ws && this.ws.readyState === WebSocket.OPEN) {
+              try { this.ws.send(new Uint8Array([0xc0, 0x00])); } catch (_) {}
+            }
+          }, 30000);
+          for (const t of this.subscriptions) this._sendSubscribe(t);
+          if (this.onConnect) this.onConnect();
+        } else if (type === 3) {
+          let offset = 1;
+          let multiplier = 1;
+          let remLen = 0;
+          do {
+            const digit = bytes[offset++];
+            remLen += (digit & 0x7f) * multiplier;
+            multiplier *= 128;
+          } while ((bytes[offset - 1] & 0x80) !== 0 && offset < bytes.length);
+
+          const topicLen = (bytes[offset] << 8) | bytes[offset + 1];
+          offset += 2;
+          const topic = new TextDecoder().decode(bytes.slice(offset, offset + topicLen));
+          offset += topicLen;
+          const payloadStr = new TextDecoder().decode(bytes.slice(offset));
+          let payload = payloadStr;
+          try { payload = JSON.parse(payloadStr); } catch (_) {}
+          if (this.onMessage) this.onMessage(topic, payload);
+        }
+      }
+
+      _encodeLength(len) {
+        const bytes = [];
+        do {
+          let digit = len % 128;
+          len = Math.floor(len / 128);
+          if (len > 0) digit |= 0x80;
+          bytes.push(digit);
+        } while (len > 0);
+        return bytes;
+      }
+    }
+
+    // ─── UI Controller ────────────────────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session') || 'tba-demo';
+
+    document.getElementById('session-tag').textContent = sessionId;
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) {}
+    }
+
+    // Tab Navigation
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-panel');
+        document.getElementById(targetId).classList.add('active');
+      });
+    });
+
+    // Remote MQTT Connection
+    const client = new MobileMqttClient('wss://broker.emqx.io:8084/mqtt', 'tba_phone_' + Math.random().toString(36).slice(2, 8));
+    const cmdTopic = `typebyaman/remote/${sessionId}/cmd`;
+    const statusTopic = `typebyaman/remote/${sessionId}/status`;
+
+    client.subscribe(statusTopic);
+
+    client.onConnect = () => {
+      const badge = document.getElementById('conn-status-badge');
+      badge.className = 'conn-status connected';
+      document.getElementById('conn-status-text').textContent = 'Connected to PC';
+      showToast('Connected to Desktop Extension');
+      // Send handshake to request state
+      client.publish(cmdTopic, { action: 'handshake', device: navigator.userAgent });
+    };
+
+    client.onDisconnect = () => {
+      const badge = document.getElementById('conn-status-badge');
+      badge.className = 'conn-status disconnected';
+      document.getElementById('conn-status-text').textContent = 'Disconnected';
+    };
+
+    client.onMessage = (topic, msg) => {
+      if (topic === statusTopic) {
+        handleDesktopStatus(msg);
+      }
+    };
+
+    client.connect();
+
+    // ─── Process Incoming Desktop Updates ─────────────────────────────────────
+    function handleDesktopStatus(msg) {
+      if (!msg) return;
+
+      // Full State Sync
+      if (msg.action === 'fullStateSync' && msg.state) {
+        const s = msg.state;
+        if (s.typing) updateTypingUI(s.typing);
+        if (s.design) updateDesignUI(s.design);
+        if (s.settings) updateSettingsUI(s.settings);
+      }
+
+      // Typing Live Status
+      if (msg.action === 'statusUpdate') {
+        updateTypingUI(msg);
+      } else if (msg.action === 'typingDone') {
+        updateTypingUI({ status: 'done', charIndex: msg.totalChars, totalChars: msg.totalChars });
+      }
+
+      // Design Live Status
+      if (msg.action === 'designStatus') {
+        updateDesignUI(msg.detail || msg);
+      }
+    }
+
+    function formatTime(ms) {
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function updateTypingUI(t) {
+      const badge = document.getElementById('typing-badge');
+      const status = t.status || 'idle';
+      badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      badge.className = `badge-status badge-${status === 'typing' ? 'running' : status}`;
+
+      const charIndex = t.charIndex || 0;
+      const totalChars = t.totalChars || 0;
+      const pct = totalChars > 0 ? Math.min(100, Math.round((charIndex / totalChars) * 100)) : 0;
+
+      document.getElementById('typing-pct').textContent = pct + '%';
+      document.getElementById('typing-chars').textContent = `${charIndex} / ${totalChars}`;
+      document.getElementById('typing-progress-fill').style.width = pct + '%';
+
+      // Button states
+      const isTyping = status === 'typing';
+      const isPaused = status === 'paused';
+      document.getElementById('btn-remote-start').disabled  = isTyping || isPaused;
+      document.getElementById('btn-remote-pause').disabled  = !isTyping;
+      document.getElementById('btn-remote-resume').disabled = !isPaused;
+      document.getElementById('btn-remote-stop').disabled   = (!isTyping && !isPaused);
+    }
+
+    function updateDesignUI(d) {
+      if (d.platform) {
+        document.getElementById('design-platform').textContent = d.platform.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      }
+      if (d.totalActions !== undefined) {
+        document.getElementById('design-actions').textContent = d.totalActions;
+      }
+      if (d.lastAction) {
+        document.getElementById('design-last-action').textContent = d.lastAction;
+      }
+      if (d.elapsed !== undefined) {
+        document.getElementById('design-elapsed').textContent = formatTime(d.elapsed);
+      }
+      if (d.remaining !== undefined) {
+        document.getElementById('design-remaining').textContent = formatTime(d.remaining);
+      }
+      if (d.pct !== undefined) {
+        document.getElementById('design-pct').textContent = d.pct + '%';
+        document.getElementById('design-progress-fill').style.width = d.pct + '%';
+      }
+
+      const badge = document.getElementById('design-badge');
+      const st = d.state || (d.running ? (d.paused ? 'paused' : 'running') : 'idle');
+      badge.textContent = st.charAt(0).toUpperCase() + st.slice(1);
+      badge.className = `badge-status badge-${st}`;
+
+      const running = st === 'running';
+      const paused  = st === 'paused';
+      const idle    = st === 'idle' || st === 'stopped' || st === 'done';
+
+      document.getElementById('btn-design-start').disabled  = !idle;
+      document.getElementById('btn-design-pause').disabled  = !running;
+      document.getElementById('btn-design-resume').disabled = !paused;
+      document.getElementById('btn-design-stop').disabled   = idle;
+    }
+
+    function updateSettingsUI(s) {
+      if (s.lastText) document.getElementById('remote-text').value = s.lastText;
+      if (s.delay) {
+        document.getElementById('speed-indicator').textContent = s.delay + ' ms/char';
+        document.getElementById('remote-speed-slider').value = Math.min(500, s.delay);
+        document.querySelectorAll('#speed-chip-group .chip').forEach(c => {
+          c.classList.toggle('active', parseInt(c.dataset.delay, 10) === s.delay);
+        });
+      }
+      if (s.humanTypoMode !== undefined) document.getElementById('set-typo-mode').checked = s.humanTypoMode;
+      if (s.linebreakDelay !== undefined) {
+        document.getElementById('set-line-delay').value = s.linebreakDelay;
+        document.getElementById('lbl-line-delay').textContent = s.linebreakDelay + ' ms';
+      }
+      if (s.startDelay !== undefined) {
+        document.getElementById('set-start-delay').value = s.startDelay;
+        document.getElementById('lbl-start-delay').textContent = s.startDelay + ' s';
+      }
+    }
+
+    // ─── Button Actions -> Send to Desktop ────────────────────────────────────
+    document.getElementById('btn-remote-start').addEventListener('click', () => {
+      const text = document.getElementById('remote-text').value;
+      const delay = parseInt(document.getElementById('remote-speed-slider').value, 10) || 50;
+      client.publish(cmdTopic, {
+        action: 'startTyping',
+        text: text,
+        delay: delay,
+        startDelay: parseInt(document.getElementById('set-start-delay').value, 10) * 1000 || 0,
+        linebreakDelay: parseInt(document.getElementById('set-line-delay').value, 10) || 0,
+        humanTypoMode: document.getElementById('set-typo-mode').checked,
+      });
+      showToast('▶ Sent: Start Typing');
+    });
+
+    document.getElementById('btn-remote-pause').addEventListener('click', () => {
+      client.publish(cmdTopic, { action: 'pauseTyping' });
+      showToast('⏸ Sent: Pause Typing');
+    });
+
+    document.getElementById('btn-remote-resume').addEventListener('click', () => {
+      client.publish(cmdTopic, { action: 'resumeTyping' });
+      showToast('▶ Sent: Resume Typing');
+    });
+
+    document.getElementById('btn-remote-stop').addEventListener('click', () => {
+      client.publish(cmdTopic, { action: 'stopTyping' });
+      showToast('⏹ Sent: Stop Typing');
+    });
+
+    // Speed Preset Chips
+    document.querySelectorAll('#speed-chip-group .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#speed-chip-group .chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const delay = parseInt(chip.dataset.delay, 10);
+        document.getElementById('remote-speed-slider').value = Math.min(500, delay);
+        document.getElementById('speed-indicator').textContent = delay + ' ms/char';
+        client.publish(cmdTopic, { action: 'updateSpeed', delay });
+        showToast(`Speed: ${delay} ms`);
+      });
+    });
+
+    // Speed Slider
+    document.getElementById('remote-speed-slider').addEventListener('input', (e) => {
+      const delay = parseInt(e.target.value, 10);
+      document.getElementById('speed-indicator').textContent = delay + ' ms/char';
+      document.querySelectorAll('#speed-chip-group .chip').forEach(c => {
+        c.classList.toggle('active', parseInt(c.dataset.delay, 10) === delay);
+      });
+    });
+
+    document.getElementById('remote-speed-slider').addEventListener('change', (e) => {
+      const delay = parseInt(e.target.value, 10);
+      client.publish(cmdTopic, { action: 'updateSpeed', delay });
+      showToast(`Speed: ${delay} ms`);
+    });
+
+    // Push Text Button
+    document.getElementById('btn-sync-text').addEventListener('click', () => {
+      const text = document.getElementById('remote-text').value;
+      client.publish(cmdTopic, { action: 'saveSettings', settings: { tba_last_text: text } });
+      showToast('Pushed text to Desktop');
+    });
+
+    // ─── Design Actions -> Send to Desktop ────────────────────────────────────
+    let selectedDesignDuration = 3600000;
+
+    document.querySelectorAll('#design-duration-chips .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#design-duration-chips .chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedDesignDuration = parseInt(chip.dataset.duration, 10);
+        showToast(`Duration: ${chip.textContent}`);
+      });
+    });
+
+    document.getElementById('btn-design-start').addEventListener('click', () => {
+      client.publish(cmdTopic, { action: 'designCmd', cmd: 'start', duration: selectedDesignDuration });
+      showToast('🎨 Sent: Start Design Mode');
+    });
+
+    document.getElementById('btn-design-pause').addEventListener('click', () => {
+      client.publish(cmdTopic, { action: 'designCmd', cmd: 'pause' });
+      showToast('⏸ Sent: Pause Design Mode');
+    });
+
+    document.getElementById('btn-design-resume').addEventListener('click', () => {
+      client.publish(cmdTopic, { action: 'designCmd', cmd: 'resume' });
+      showToast('▶ Sent: Resume Design Mode');
+    });
+
+    document.getElementById('btn-design-stop').addEventListener('click', () => {
+      client.publish(cmdTopic, { action: 'designCmd', cmd: 'stop' });
+      showToast('⏹ Sent: Stop Design Mode');
+    });
+
+    // ─── Settings Save ────────────────────────────────────────────────────────
+    document.getElementById('set-line-delay').addEventListener('input', (e) => {
+      document.getElementById('lbl-line-delay').textContent = e.target.value + ' ms';
+    });
+
+    document.getElementById('set-start-delay').addEventListener('input', (e) => {
+      document.getElementById('lbl-start-delay').textContent = e.target.value + ' s';
+    });
+
+    document.getElementById('btn-save-settings').addEventListener('click', () => {
+      const settings = {
+        tba_human_typo_mode: document.getElementById('set-typo-mode').checked,
+        tba_linebreak_delay: parseInt(document.getElementById('set-line-delay').value, 10),
+        tba_start_delay: parseInt(document.getElementById('set-start-delay').value, 10) * 1000,
+        tba_last_text: document.getElementById('remote-text').value,
+      };
+      client.publish(cmdTopic, { action: 'saveSettings', settings });
+      showToast('✓ Settings Synced to PC');
+    });
+  </script>
+</body>
+</html>

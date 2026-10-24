@@ -29,7 +29,8 @@
         "<all_urls>"
       ],
       "js": [
-        "content/content.js"
+        "content/content.js",
+        "content/design-engine.js"
       ],
       "run_at": "document_idle"
     }
@@ -74,7 +75,8 @@
     {
       "resources": [
         "assets/*",
-        "content/design-engine.js"
+        "content/design-engine.js",
+        "remote/*"
       ],
       "matches": [
         "<all_urls>"

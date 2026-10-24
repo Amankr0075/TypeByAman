@@ -40,17 +40,27 @@
 
   // ─── Helper: sleep ─────────────────────────────────────────────────────────
 
-  function sleep(ms, signal) {
-    return new Promise((resolve, reject) => {
-      if (ms <= 0) { resolve(); return; }
-      const id = setTimeout(resolve, ms);
-      if (signal) {
-        signal.addEventListener('abort', () => {
-          clearTimeout(id);
-          reject(new DOMException('Aborted', 'AbortError'));
-        }, { once: true });
-      }
-    });
+  async function sleep(ms, signal) {
+    if (ms <= 0) return;
+    const start = Date.now();
+    while (Date.now() - start < ms) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      await waitIfPaused();
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      const elapsed = Date.now() - start;
+      const remaining = ms - elapsed;
+      if (remaining <= 0) break;
+      const slice = Math.min(35, remaining);
+      await new Promise((resolve) => {
+        const id = setTimeout(resolve, slice);
+        if (signal) {
+          signal.addEventListener('abort', () => {
+            clearTimeout(id);
+            resolve();
+          }, { once: true });
+        }
+      });
+    }
   }
 
   // ─── Helper: pausePoint ────────────────────────────────────────────────────
@@ -384,6 +394,11 @@
       let nextThinkLine = 15 + Math.floor(Math.random() * 25); // 15–40 lines for thinking pause
       let nextRunLine = 75 + Math.floor(Math.random() * 100);  // 75–175 lines for code run
 
+      // Dynamic word tempo: some words fast, some words deliberate, some standard
+      let currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
+      let charsSinceLastThink5s = 0;
+      let nextThink5sThreshold = 140 + Math.floor(Math.random() * 160); // every ~25–55 words
+
       for (let i = 0; i < text.length; i++) {
         if (signal.aborted) break;
 
@@ -393,8 +408,31 @@
         const ch = text[i];
         typingState.charIndex = i;
 
+        charsSinceLastThink5s++;
+
+        // Word boundary & punctuation detection
+        const isWordBoundary = ch === ' ' || ch === '\t';
+        const isPunctuation = /[.,!?:;]/.test(ch);
+        const isLineBreak = ch === '\n' || ch === '\r';
+
+        // ── 5-Second Human Thinking Pause ──────────────────────────────────────
+        // "while typing somewhere wait for 5 seconds and then continue writing"
+        if (charsSinceLastThink5s >= nextThink5sThreshold && (isWordBoundary || isPunctuation || isLineBreak) && !signal.aborted) {
+          charsSinceLastThink5s = 0;
+          nextThink5sThreshold = 150 + Math.floor(Math.random() * 180);
+          // Human stops typing to think / review notes: ~5 seconds (4.7s – 5.3s)
+          const think5s = 4700 + Math.floor(Math.random() * 600);
+          await sleep(think5s, signal);
+          if (signal.aborted) break;
+          // After 5s pause, pick a fresh word tempo
+          currentWordTempo = Math.random() < 0.4 ? 'fast' : (Math.random() < 0.25 ? 'deliberate' : 'normal');
+        } else if (isWordBoundary) {
+          // Switch tempo on word boundary: some words fast, some words deliberate
+          currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
+        }
+
         const now = Date.now();
-        const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
+        const isEligibleForTypo = !isLineBreak && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
 
         // ── 1. Major Human Mistake (Every 35s–95s: types around 50-70 chars wrong, erases one by one, and retypes) ──
         if (typingState.humanTypoMode && isEligibleForTypo && (now - lastMajorTypoTime) >= nextMajorTypoInterval) {
@@ -511,12 +549,9 @@
           });
         }
 
-        // Natural human delay: log-normal keystroke dynamics with symbol/Shift latency
-        const isLineBreak = ch === '\n' || ch === '\r';
+        // Natural human delay: dynamic word tempo + symbol/Shift latency (NEVER CONSTANT)
         const extraDelay = isLineBreak ? (typingState.linebreakDelay || 250) : 0;
-        const totalDelay = typingState.humanTypoMode
-          ? calculateHumanDelay(ch, typingState.delay) + extraDelay
-          : Math.max(1, typingState.delay + extraDelay);
+        const totalDelay = calculateHumanDelay(ch, typingState.delay, currentWordTempo) + extraDelay;
         if (totalDelay > 0) await sleep(totalDelay, signal);
 
         // ── Human Coding Behavior: Thinking Pauses & Run Code ──────────────────
@@ -563,34 +598,49 @@
     }
   }
 
-  // ─── Human Keystroke Latency Model ──────────────────────────────────────────
-  function calculateHumanDelay(ch, baseDelay) {
-    // Log-normal variation: ±30%
-    let delay = baseDelay * (0.75 + Math.random() * 0.5);
+  // ─── Human Keystroke Latency Model (Non-constant, undetectable) ──────────────
+  function calculateHumanDelay(ch, baseDelay, tempo = 'normal') {
+    // 1. Word tempo persona:
+    // "some words should be typed fast and all other"
+    let tempoMultiplier;
+    if (tempo === 'fast') {
+      tempoMultiplier = 0.38 + Math.random() * 0.22; // 0.38x – 0.60x (typed fast, muscle memory burst)
+    } else if (tempo === 'deliberate') {
+      tempoMultiplier = 1.45 + Math.random() * 0.70; // 1.45x – 2.15x (complex / deliberate word)
+    } else {
+      tempoMultiplier = 0.78 + Math.random() * 0.44; // 0.78x – 1.22x (standard organic flow)
+    }
 
-    // Uppercase requires holding Shift (+40ms–80ms)
+    // 2. Base delay scaling according to selected mode, but ALWAYS non-constant
+    // High-entropy log-normal jitter around the tempo-adjusted base
+    let delay = baseDelay * tempoMultiplier * (0.80 + Math.random() * 0.40);
+
+    // 3. Biomechanical letter latency factors:
+    // Uppercase requires holding Shift (+35ms–75ms)
     if (ch >= 'A' && ch <= 'Z') {
-      delay += 40 + Math.random() * 40;
+      delay += 35 + Math.random() * 40;
     }
-    // Punctuation, braces, brackets and operators (+50ms–110ms)
+    // Punctuation, braces, brackets and operators (+45ms–95ms)
     else if (/[{}()[\];:,.=+\-*\/&|!<>?]/.test(ch)) {
-      delay += 50 + Math.random() * 60;
+      delay += 45 + Math.random() * 50;
     }
-    // Numbers on top row (+30ms–60ms)
+    // Numbers on top row (+25ms–55ms)
     else if (/[0-9]/.test(ch)) {
-      delay += 30 + Math.random() * 30;
+      delay += 25 + Math.random() * 30;
     }
-    // Space between words: cognitive boundary (+25ms–55ms)
+    // Space between words: cognitive boundary (+25ms–65ms)
     else if (ch === ' ') {
-      delay += 25 + Math.random() * 35;
+      delay += 25 + Math.random() * 40;
     }
 
-    // Occasional human hesitation (5% chance of 140-280ms pause)
-    if (Math.random() < 0.05) {
-      delay += 140 + Math.random() * 140;
+    // 4. Occasional human hesitation (6% chance of a 130–260ms pause)
+    if (Math.random() < 0.06) {
+      delay += 130 + Math.random() * 130;
     }
 
-    return Math.max(15, Math.round(delay));
+    // Floor at 2ms so even very fast mode never blocks, but keeps organic variation
+    const minDelay = baseDelay <= 10 ? 2 : Math.min(15, Math.round(baseDelay * 0.3));
+    return Math.max(minDelay, Math.round(delay));
   }
 
   // ─── Web Code Editor "Run Code" Simulation ──────────────────────────────────

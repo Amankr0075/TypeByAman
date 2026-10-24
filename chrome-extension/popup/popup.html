@@ -63,6 +63,7 @@
     <nav class="tab-nav" role="tablist" aria-label="Main navigation">
       <button class="tab-btn active" id="tab-editor" role="tab" aria-selected="true" aria-controls="panel-editor" data-tab="editor">Editor</button>
       <button class="tab-btn" id="tab-design" role="tab" aria-selected="false" aria-controls="panel-design" data-tab="design">Design</button>
+      <button class="tab-btn" id="tab-remote" role="tab" aria-selected="false" aria-controls="panel-remote" data-tab="remote">Remote</button>
       <button class="tab-btn" id="tab-about" role="tab" aria-selected="false" aria-controls="panel-about" data-tab="about">About</button>
     </nav>
 
@@ -416,6 +417,95 @@
       </div>
     </div>
 
+    <!-- Remote Panel -->
+    <div id="panel-remote" class="tab-panel" role="tabpanel" aria-labelledby="tab-remote" style="display:none;">
+      <div class="panel-section-title">
+        <div class="title-with-badge">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+            <line x1="12" y1="18" x2="12.01" y2="18"/>
+          </svg>
+          <span>Mobile Remote &amp; Control</span>
+        </div>
+        <span class="live-pill" id="remote-live-pill">
+          <span class="pulse-dot"></span>
+          <span id="remote-conn-label">Ready</span>
+        </span>
+      </div>
+
+      <p class="section-desc">
+        Scan this unique QR code with your phone camera to control live Typing, Design mode, and settings directly from any device.
+      </p>
+
+      <div class="qr-card">
+        <div class="qr-wrapper" id="qr-code-wrapper">
+          <div id="qr-code-container" class="qr-code-box" title="Scan to open remote control">
+            <!-- SVG QR Code rendered here dynamically -->
+          </div>
+          <div class="qr-corner top-left"></div>
+          <div class="qr-corner top-right"></div>
+          <div class="qr-corner bottom-left"></div>
+          <div class="qr-corner bottom-right"></div>
+        </div>
+
+        <div class="qr-meta">
+          <div class="qr-session-row">
+            <span class="qr-label">Session ID</span>
+            <code class="qr-session-id" id="qr-session-text">tba-loading...</code>
+          </div>
+          <div class="qr-status-row">
+            <span class="qr-label">Remote Device</span>
+            <span class="qr-status-text" id="qr-status-text">Waiting for phone to scan...</span>
+          </div>
+        </div>
+
+        <div class="qr-actions">
+          <button class="btn btn-primary btn-sm" id="btn-copy-remote-url" title="Copy remote link to clipboard">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span id="btn-copy-remote-text">Copy Link</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btn-regen-qr" title="Generate a fresh secure QR code">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            <span>New QR</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" id="btn-open-remote-tab" title="Test remote dashboard in a browser tab">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            <span>Open</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="remote-features-grid">
+        <div class="rf-card">
+          <div class="rf-icon">⌨️</div>
+          <div class="rf-content">
+            <div class="rf-title">Live Typing Remote</div>
+            <div class="rf-desc">Start, Pause, Resume, and Stop writing on screen from your phone.</div>
+          </div>
+        </div>
+        <div class="rf-card">
+          <div class="rf-icon">🎨</div>
+          <div class="rf-content">
+            <div class="rf-title">Design Mode Remote</div>
+            <div class="rf-desc">Live trigger Figma/Canva actions with human-speed natural flow.</div>
+          </div>
+        </div>
+        <div class="rf-card">
+          <div class="rf-icon">⚙️</div>
+          <div class="rf-content">
+            <div class="rf-title">Settings &amp; Speeds</div>
+            <div class="rf-desc">Adjust speed presets, human typo simulation, and start delays on the fly.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <!-- Animated Creator Footer Banner -->
@@ -451,6 +541,8 @@
     </a>
   </footer>
 
+  <script src="../lib/qrcode.js"></script>
+  <script src="../remote/remote-bridge.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

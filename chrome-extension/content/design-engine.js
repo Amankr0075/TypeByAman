@@ -37,10 +37,13 @@
     paused: false,
     abortController: null,
     sessionStartTime: null,
+    totalPausedTime: 0,
+    pauseStartTime: null,
     sessionDuration: 60 * 60 * 1000, // 1 hour in ms
     pauseResolve: null,
     totalActions: 0,
     platform: 'unknown',
+    lastAction: null,
   };
 
   // ─── Platform Detection ─────────────────────────────────────────────────────
@@ -66,24 +69,38 @@
 
   // ─── Utilities ──────────────────────────────────────────────────────────────
 
-  /** Abortable sleep */
-  function sleep(ms, signal) {
-    return new Promise((resolve, reject) => {
-      if (ms <= 0) { resolve(); return; }
-      const id = setTimeout(resolve, ms);
-      if (signal) {
-        signal.addEventListener('abort', () => {
-          clearTimeout(id);
-          reject(new DOMException('Design mode aborted', 'AbortError'));
-        }, { once: true });
-      }
-    });
+  /** Abortable and pause-aware sleep */
+  async function sleep(ms, signal) {
+    if (ms <= 0) return;
+    const start = Date.now();
+    while (Date.now() - start < ms) {
+      if (signal?.aborted) throw new DOMException('Design mode aborted', 'AbortError');
+      await waitIfPaused(signal);
+      if (signal?.aborted) throw new DOMException('Design mode aborted', 'AbortError');
+      const elapsed = Date.now() - start;
+      const remaining = ms - elapsed;
+      if (remaining <= 0) break;
+      const slice = Math.min(35, remaining);
+      await new Promise((resolve) => {
+        const id = setTimeout(resolve, slice);
+        if (signal) {
+          signal.addEventListener('abort', () => {
+            clearTimeout(id);
+            resolve();
+          }, { once: true });
+        }
+      });
+    }
   }
 
   /** Wait if paused */
-  function waitIfPaused() {
-    if (!designState.paused) return Promise.resolve();
-    return new Promise(resolve => { designState.pauseResolve = resolve; });
+  async function waitIfPaused(signal) {
+    while (designState.paused && !signal?.aborted) {
+      await new Promise(resolve => { designState.pauseResolve = resolve; });
+    }
+    if (signal?.aborted) {
+      throw new DOMException('Design mode aborted', 'AbortError');
+    }
   }
 
   /** Random int between [min, max] inclusive */
@@ -444,27 +461,68 @@
   }
 
   // ─── Human Cursor Movement ───────────────────────────────────────────────────
-  // Moves the single virtual cursor along a natural bezier curve with micro-drift.
+  // Moves the virtual cursor slowly with organic non-linear speed variation,
+  // asymmetric bell-curve velocity, acceleration, decelerating target-homing, and micro-tremor.
+  // No two steps or strokes ever match a constant speed!
 
   async function moveCursorTo(toX, toY, signal, options = {}) {
     const fromX = _cursorX;
     const fromY = _cursorY;
     const dist = Math.hypot(toX - fromX, toY - fromY);
-    const steps = Math.max(8, Math.min(55, Math.floor(dist / 14)));
+    if (dist < 0.5) {
+      _cursorX = toX;
+      _cursorY = toY;
+      renderCursorPosition(toX, toY, false);
+      return;
+    }
 
-    // Bezier control point with slight natural curve
-    const cpX = (fromX + toX) / 2 + randf(-dist * 0.22, dist * 0.22);
-    const cpY = (fromY + toY) / 2 + randf(-dist * 0.22, dist * 0.22);
-    const baseDuration = options.fast ? rand(70, 160) : rand(180, 420);
+    // Slow, measured human designer pacing (deliberate inspection & navigation)
+    // Distance-scaled duration: 900ms–2600ms for normal moves, 450ms–800ms for fast moves
+    const baseDuration = options.fast
+      ? rand(450, 800)
+      : Math.round(900 + Math.pow(dist, 0.65) * randf(30, 50) + rand(200, 500));
+
+    // Ample steps for silky smooth visual rendering (30 to 130 steps)
+    const steps = Math.max(30, Math.min(130, Math.floor(dist / 4.5)));
+
+    // Curved Bezier trajectory with natural human curvature
+    const curvature = randf(0.12, 0.28) * (Math.random() < 0.5 ? 1 : -1);
+    const midX = (fromX + toX) / 2;
+    const midY = (fromY + toY) / 2;
+    const normalX = -(toY - fromY) / (dist || 1);
+    const normalY = (toX - fromX) / (dist || 1);
+    const cpX = midX + normalX * dist * curvature + randf(-8, 8);
+    const cpY = midY + normalY * dist * curvature + randf(-8, 8);
+
+    // Dynamic velocity persona for this stroke to ensure zero predictability:
+    const rhythmType = pick(['bell', 'front-loaded', 'back-loaded', 'hesitant']);
+    const speedSineFreq = randf(2.0, 4.5);
+    const speedSineAmp = randf(0.2, 0.42);
 
     for (let s = 1; s <= steps; s++) {
-      if (signal.aborted) return;
-      await waitIfPaused();
+      if (signal?.aborted) return;
+      await waitIfPaused(signal);
+      if (signal?.aborted) return;
 
       const t = s / steps;
-      // Quadratic bezier + human micro-jitter
-      const x = (1 - t) * (1 - t) * fromX + 2 * (1 - t) * t * cpX + t * t * toX + randf(-1.2, 1.2);
-      const y = (1 - t) * (1 - t) * fromY + 2 * (1 - t) * t * cpY + t * t * toY + randf(-1.2, 1.2);
+
+      // Asymmetric human velocity curve
+      let v;
+      if (rhythmType === 'front-loaded') {
+        v = Math.sin(Math.pow(t, 0.75) * Math.PI);
+      } else if (rhythmType === 'back-loaded') {
+        v = Math.sin(Math.pow(t, 1.35) * Math.PI);
+      } else if (rhythmType === 'hesitant' && t > 0.35 && t < 0.65) {
+        v = Math.max(0.2, Math.sin(t * Math.PI) * 0.55);
+      } else {
+        v = Math.sin(t * Math.PI);
+      }
+
+      // Smooth step easing with sinusoidal variation (never constant velocity)
+      const tEased = (1 - Math.cos(t * Math.PI)) / 2;
+      const microJitter = randf(-0.7, 0.7);
+      const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX + microJitter;
+      const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY + microJitter;
 
       dispatchPointer('pointermove', x, y);
       dispatchMouse('mousemove', x, y);
@@ -472,8 +530,12 @@
       _cursorY = y;
       renderCursorPosition(x, y, false);
 
-      const stepDelay = baseDuration / steps + randf(-3, 4);
-      await sleep(Math.max(4, stepDelay), signal);
+      // Dynamically varied step delay: slower at start & end, non-constant rhythm throughout
+      const velocityMod = Math.max(0.22, (v * (1 + Math.sin(t * Math.PI * speedSineFreq) * speedSineAmp)));
+      const baseStepDelay = baseDuration / steps;
+      const dynamicStepDelay = (baseStepDelay / velocityMod) * randf(0.85, 1.25);
+
+      await sleep(Math.max(6, Math.round(dynamicStepDelay)), signal);
     }
 
     _cursorX = toX;
@@ -486,7 +548,8 @@
   /** Move to point, depress cursor, spawn click ripple halo, dispatch click */
   async function clickAt(x, y, signal, opts = {}) {
     await moveCursorTo(x, y, signal, opts);
-    if (signal.aborted) return;
+    if (signal?.aborted) return;
+    await waitIfPaused(signal);
 
     // Visual feedback: depress cursor and spawn click halo
     renderCursorPosition(x, y, true);
@@ -513,7 +576,9 @@
   /** Double-click with dual-stage expanding ripples */
   async function doubleClickAt(x, y, signal) {
     await clickAt(x, y, signal, { haloVariant: 'blue' });
+    if (signal?.aborted) return;
     await sleep(rand(60, 110), signal);
+    if (signal?.aborted) return;
 
     // Second click pulse with secondary halo
     renderCursorPosition(x, y, true);
@@ -531,10 +596,11 @@
     await sleep(rand(80, 200), signal);
   }
 
-  /** Drag with continuous glowing drag halo and organic ease-in-out */
+  /** Drag with continuous glowing drag halo and slow, organic variable speed */
   async function dragFrom(fromX, fromY, toX, toY, signal, opts = {}) {
     await moveCursorTo(fromX, fromY, signal);
-    if (signal.aborted) return;
+    if (signal?.aborted) return;
+    await waitIfPaused(signal);
 
     // Press down & activate drag halo
     renderCursorPosition(fromX, fromY, true);
@@ -543,32 +609,35 @@
 
     dispatchPointer('pointerdown', fromX, fromY, { buttons: 1 });
     dispatchMouse('mousedown', fromX, fromY, { buttons: 1 });
-    await sleep(rand(80, 180), signal);
-    if (signal.aborted) {
+    await sleep(rand(120, 240), signal);
+    if (signal?.aborted) {
       updateDragHalo(0, 0, false);
       renderCursorPosition(fromX, fromY, false);
       return;
     }
 
     const dist = Math.hypot(toX - fromX, toY - fromY);
-    const steps = Math.max(12, Math.min(80, Math.floor(dist / 8)));
-    const cpX = (fromX + toX) / 2 + randf(-dist * 0.16, dist * 0.16);
-    const cpY = (fromY + toY) / 2 + randf(-dist * 0.16, dist * 0.16);
-    const dragDuration = opts.fast ? rand(140, 280) : rand(320, 680);
+    const steps = Math.max(35, Math.min(120, Math.floor(dist / 4.0)));
+    const cpX = (fromX + toX) / 2 + randf(-dist * 0.14, dist * 0.14);
+    const cpY = (fromY + toY) / 2 + randf(-dist * 0.14, dist * 0.14);
+
+    // Deliberate, slow human drag duration (1100ms - 2800ms)
+    const dragDuration = opts.fast ? rand(650, 1100) : Math.round(1100 + Math.pow(dist, 0.6) * randf(28, 48) + rand(250, 600));
 
     for (let s = 1; s <= steps; s++) {
-      if (signal.aborted) {
+      if (signal?.aborted) {
         updateDragHalo(0, 0, false);
         renderCursorPosition(_cursorX, _cursorY, false);
         return;
       }
-      await waitIfPaused();
+      await waitIfPaused(signal);
+      if (signal?.aborted) return;
 
       const t = s / steps;
-      // Smooth human ease-in-out
+      // Smooth human ease-in-out with deceleration near alignment point
       const tEased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX + randf(-1, 1);
-      const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY + randf(-1, 1);
+      const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX + randf(-0.8, 0.8);
+      const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY + randf(-0.8, 0.8);
 
       dispatchPointer('pointermove', x, y, { buttons: 1, dragging: true, pressure: 0.5 });
       dispatchMouse('mousemove', x, y, { buttons: 1, dragging: true });
@@ -577,20 +646,23 @@
       renderCursorPosition(x, y, true);
       updateDragHalo(x, y, true);
 
-      await sleep(Math.max(4, dragDuration / steps), signal);
+      // Non-constant variable drag step delay
+      const v = Math.max(0.3, Math.sin(t * Math.PI) * (1 + Math.sin(t * Math.PI * 3) * 0.25));
+      const stepDelay = (dragDuration / steps) * (1 / v) * randf(0.85, 1.25);
+      await sleep(Math.max(6, Math.round(stepDelay)), signal);
     }
 
-    if (signal.aborted) {
+    if (signal?.aborted) {
       updateDragHalo(0, 0, false);
       renderCursorPosition(_cursorX, _cursorY, false);
       return;
     }
 
-    // Release mouse
-    updateDragHalo(0, 0, false);
+    // Release mouse and deactivate drag halo
+    await sleep(rand(90, 190), signal);
     renderCursorPosition(toX, toY, false);
+    updateDragHalo(0, 0, false);
     showClickHalo(toX, toY, 'purple', 32);
-
     dispatchPointer('pointerup', toX, toY, { buttons: 0 });
     dispatchMouse('mouseup', toX, toY, { buttons: 0 });
     _cursorX = toX;
@@ -783,36 +855,44 @@
     const sample = pick(designTexts);
     const charsToType = rand(Math.min(5, sample.length), sample.length);
 
-    // Realistic typing cadence loop
+    // Realistic variable typing cadence: alternate fast burst words and deliberate words
+    let inFastBurst = Math.random() < 0.4;
     for (let i = 0; i < charsToType && !signal.aborted; i++) {
+      await waitIfPaused(signal);
+      if (signal.aborted) break;
+
       const char = sample[i];
+      if (char === ' ') {
+        inFastBurst = Math.random() < 0.45;
+      }
 
       // 15% chance of making a 1-character typo, noticing, and correcting!
       if (Math.random() < 0.15 && i > 1) {
         const typoChar = String.fromCharCode(char.charCodeAt(0) + rand(-1, 1));
         dispatchKeyboard('keydown', typoChar);
-        await sleep(rand(40, 90), signal);
+        await sleep(rand(35, 75), signal);
         dispatchKeyboard('keyup', typoChar);
 
         // Human hesitation upon noticing the typo
-        await sleep(rand(220, 480), signal);
+        await sleep(rand(200, 420), signal);
 
         // Hit backspace to delete the mistaken character
         dispatchKeyboard('keydown', 'Backspace', { code: 'Backspace' });
-        await sleep(rand(45, 95), signal);
+        await sleep(rand(35, 75), signal);
         dispatchKeyboard('keyup', 'Backspace', { code: 'Backspace' });
-        await sleep(rand(140, 260), signal);
+        await sleep(rand(120, 240), signal);
       }
 
-      // Type correct character
+      // Type correct character with varied velocity
+      const keyPressDuration = inFastBurst ? rand(25, 60) : rand(55, 110);
       dispatchKeyboard('keydown', char);
-      await sleep(rand(45, 120), signal);
+      await sleep(keyPressDuration, signal);
       dispatchKeyboard('keyup', char);
 
-      // Variable inter-keystroke intervals (longer pauses after spaces/punctuation)
-      let pauseMs = rand(55, 140);
-      if (char === ' ') pauseMs += rand(70, 180);
-      if (char === ',' || char === '.') pauseMs += rand(180, 360);
+      // Variable inter-keystroke intervals (fast burst words type quickly; others vary)
+      let pauseMs = inFastBurst ? rand(25, 65) : rand(65, 160);
+      if (char === ' ') pauseMs += rand(80, 220);
+      if (char === ',' || char === '.') pauseMs += rand(200, 450);
       await sleep(pauseMs, signal);
     }
 
@@ -1257,6 +1337,8 @@
   async function runDesignLoop() {
     const signal = designState.abortController.signal;
     designState.sessionStartTime = Date.now();
+    designState.totalPausedTime = 0;
+    designState.pauseStartTime = null;
     designState.totalActions = 0;
     designState.platform = detectPlatform();
 
@@ -1267,6 +1349,12 @@
     window.dispatchEvent(new CustomEvent('tbaDesignStatus', {
       detail: { state: 'running', platform: designState.platform }
     }));
+    try {
+      chrome.runtime.sendMessage({
+        action: 'designStatus',
+        detail: { state: 'running', platform: designState.platform }
+      });
+    } catch (_) {}
 
     try {
       // Brief human warm-up pause before first action
@@ -1274,15 +1362,18 @@
 
       while (!signal.aborted && designState.running) {
         // Enforce session duration limit
-        if (Date.now() - designState.sessionStartTime >= designState.sessionDuration) {
+        const currentPaused = designState.pauseStartTime ? (Date.now() - designState.pauseStartTime) : 0;
+        const currentElapsed = Date.now() - designState.sessionStartTime - designState.totalPausedTime - currentPaused;
+        if (currentElapsed >= designState.sessionDuration) {
           break;
         }
 
-        await waitIfPaused();
+        await waitIfPaused(signal);
         if (signal.aborted) break;
 
         // Pick and execute human design action
         const action = pickAction();
+        designState.lastAction = action.label;
         try {
           await action.fn(signal);
         } catch (err) {
@@ -1292,39 +1383,47 @@
 
         if (signal.aborted || !designState.running) break;
 
-        const elapsed = Date.now() - designState.sessionStartTime;
+        const pausedNow = designState.pauseStartTime ? (Date.now() - designState.pauseStartTime) : 0;
+        const elapsed = Math.max(0, Date.now() - designState.sessionStartTime - designState.totalPausedTime - pausedNow);
         const remaining = Math.max(0, designState.sessionDuration - elapsed);
         const pct = Math.min(100, Math.round((elapsed / designState.sessionDuration) * 100));
 
         // Broadcast live progress
-        window.dispatchEvent(new CustomEvent('tbaDesignStatus', {
-          detail: {
-            state: 'running',
-            elapsed,
-            remaining,
-            pct,
-            totalActions: designState.totalActions,
-            platform: designState.platform,
-            lastAction: action.label,
-          }
-        }));
+        const statusDetail = {
+          state: 'running',
+          elapsed,
+          remaining,
+          pct,
+          totalActions: designState.totalActions,
+          platform: designState.platform,
+          lastAction: action.label,
+          sessionDuration: designState.sessionDuration,
+        };
+        window.dispatchEvent(new CustomEvent('tbaDesignStatus', { detail: statusDetail }));
+        try {
+          chrome.runtime.sendMessage({ action: 'designStatus', detail: statusDetail });
+        } catch (_) {}
 
         // Human thinking pause between actions
         await thinkingPause(signal, pickPauseType());
       }
 
-      if (!signal.aborted) {
+      if (!signal.aborted && designState.running) {
         designState.running = false;
-        window.dispatchEvent(new CustomEvent('tbaDesignStatus', {
-          detail: { state: 'done', totalActions: designState.totalActions }
-        }));
+        const doneDetail = { state: 'done', totalActions: designState.totalActions };
+        window.dispatchEvent(new CustomEvent('tbaDesignStatus', { detail: doneDetail }));
+        try {
+          chrome.runtime.sendMessage({ action: 'designStatus', detail: doneDetail });
+        } catch (_) {}
       }
 
     } catch (err) {
       if (err.name !== 'AbortError') {
-        window.dispatchEvent(new CustomEvent('tbaDesignStatus', {
-          detail: { state: 'error', message: err.message }
-        }));
+        const errDetail = { state: 'error', message: err.message };
+        window.dispatchEvent(new CustomEvent('tbaDesignStatus', { detail: errDetail }));
+        try {
+          chrome.runtime.sendMessage({ action: 'designStatus', detail: errDetail });
+        } catch (_) {}
       }
     } finally {
       // Clean up cursor overlay and restore standard browser cursor
@@ -1332,33 +1431,45 @@
     }
   }
 
-  // ─── Public API (via window messages) ──────────────────────────────────────
+  // ─── Public Command Handler ─────────────────────────────────────────────────
 
-  window.addEventListener('message', (e) => {
-    if (e.source !== window || !e.data || e.data.tbaDesign === undefined) return;
-    const { tbaDesign: cmd } = e.data;
-
+  function handleDesignCommand(cmd, duration) {
     switch (cmd) {
       case 'start':
-        if (designState.running) return;
+        if (designState.running) {
+          if (designState.paused) {
+            handleDesignCommand('resume');
+          }
+          return;
+        }
         designState.running = true;
         designState.paused = false;
+        designState.totalPausedTime = 0;
+        designState.pauseStartTime = null;
         designState.abortController = new AbortController();
-        if (e.data.duration) designState.sessionDuration = e.data.duration;
+        if (duration) designState.sessionDuration = duration;
         runDesignLoop().catch(() => {});
         break;
 
       case 'pause':
         if (!designState.running || designState.paused) return;
         designState.paused = true;
+        designState.pauseStartTime = Date.now();
         window.dispatchEvent(new CustomEvent('tbaDesignStatus', {
           detail: { state: 'paused' }
         }));
+        try {
+          chrome.runtime.sendMessage({ action: 'designStatus', detail: { state: 'paused' } });
+        } catch (_) {}
         break;
 
       case 'resume':
         if (!designState.paused) return;
         designState.paused = false;
+        if (designState.pauseStartTime) {
+          designState.totalPausedTime += (Date.now() - designState.pauseStartTime);
+          designState.pauseStartTime = null;
+        }
         if (designState.pauseResolve) {
           designState.pauseResolve();
           designState.pauseResolve = null;
@@ -1367,13 +1478,21 @@
         window.dispatchEvent(new CustomEvent('tbaDesignStatus', {
           detail: { state: 'running' }
         }));
+        try {
+          chrome.runtime.sendMessage({ action: 'designStatus', detail: { state: 'running' } });
+        } catch (_) {}
         break;
 
       case 'stop':
-        if (!designState.running) return;
         designState.running = false;
         designState.paused = false;
-        if (designState.abortController) designState.abortController.abort();
+        if (designState.pauseStartTime) {
+          designState.totalPausedTime += (Date.now() - designState.pauseStartTime);
+          designState.pauseStartTime = null;
+        }
+        if (designState.abortController) {
+          try { designState.abortController.abort(); } catch (_) {}
+        }
         if (designState.pauseResolve) {
           designState.pauseResolve();
           designState.pauseResolve = null;
@@ -1382,8 +1501,55 @@
         window.dispatchEvent(new CustomEvent('tbaDesignStatus', {
           detail: { state: 'stopped', totalActions: designState.totalActions }
         }));
+        try {
+          chrome.runtime.sendMessage({
+            action: 'designStatus',
+            detail: { state: 'stopped', totalActions: designState.totalActions }
+          });
+        } catch (_) {}
         break;
     }
+  }
+
+  // ─── Chrome Extension runtime message listener ──────────────────────────────
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+      if (msg.action === 'designCmd') {
+        handleDesignCommand(msg.cmd, msg.duration);
+        sendResponse({
+          ok: true,
+          state: designState.running ? (designState.paused ? 'paused' : 'running') : 'idle'
+        });
+        return true;
+      }
+      if (msg.action === 'designGetStatus') {
+        const currentPaused = designState.pauseStartTime ? (Date.now() - designState.pauseStartTime) : 0;
+        const elapsed = designState.sessionStartTime
+          ? Math.max(0, Date.now() - designState.sessionStartTime - designState.totalPausedTime - currentPaused)
+          : 0;
+        const remaining = Math.max(0, designState.sessionDuration - elapsed);
+        const pct = Math.min(100, Math.round((elapsed / designState.sessionDuration) * 100));
+        sendResponse({
+          running: designState.running,
+          paused: designState.paused,
+          elapsed,
+          remaining,
+          pct,
+          totalActions: designState.totalActions,
+          platform: designState.platform,
+          lastAction: designState.lastAction || 'Ready',
+          sessionDuration: designState.sessionDuration,
+        });
+        return true;
+      }
+    });
+  }
+
+  // ─── Window message listener (ExecuteScript postMessage fallback) ───────────
+  window.addEventListener('message', (e) => {
+    if (!e.data || e.data.tbaDesign === undefined) return;
+    const { tbaDesign: cmd, duration } = e.data;
+    handleDesignCommand(cmd, duration);
   });
 
   // ─── Relay design status events → chrome.runtime for popup UI ───────────────
