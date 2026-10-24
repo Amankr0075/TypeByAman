@@ -46,11 +46,14 @@ const vscode = __importStar(require("vscode"));
 const typingEngine_1 = require("./typingEngine");
 const panel_1 = require("./panel");
 const statusBar_1 = require("./statusBar");
+const nativeCursorBridge_1 = require("./nativeCursorBridge");
 // ─── Extension State ─────────────────────────────────────────────────────────
 let engine = null;
 let statusBar = null;
+let extContext = null;
 // ─── Activate ────────────────────────────────────────────────────────────────
 function activate(context) {
+    extContext = context;
     // Status bar
     statusBar = new statusBar_1.StatusBarManager();
     context.subscriptions.push(statusBar);
@@ -81,6 +84,7 @@ function activate(context) {
 function deactivate() {
     engine?.stop();
     statusBar?.dispose();
+    nativeCursorBridge_1.NativeCursorBridge.getInstance().stop();
 }
 // ─── Panel Command Handler ────────────────────────────────────────────────────
 function onPanelCommand(msg) {
@@ -131,6 +135,8 @@ function getConfig() {
         lineBreakDelay: Math.max(0, cfg.get('lineBreakDelay', 0)),
         startDelay: Math.max(0, cfg.get('startDelay', 0)),
         speedPreset: preset,
+        enableRunPause: cfg.get('enableRunPause', true),
+        runCommand: cfg.get('runCommand', ''),
     };
 }
 async function cmdStart(payload) {
@@ -190,6 +196,9 @@ async function cmdStart(payload) {
         delay,
         lineBreakDelay,
         startDelay,
+        enableRunPause: cfg.enableRunPause,
+        runCommand: cfg.runCommand || undefined,
+        extensionPath: extContext?.extensionPath,
         onProgress: (charIndex, totalChars) => {
             statusBar?.update('typing', charIndex, totalChars, delay);
             panel_1.TypeByAmanPanel.postMessage({

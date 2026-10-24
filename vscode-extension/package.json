@@ -90,6 +90,16 @@
     "configuration": {
       "title": "TypeByAman",
       "properties": {
+        "typebyaman.stealthMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Completely hide or disguise status bar items and UI indicators so screen recorders and monitoring tools cannot detect typing automation."
+        },
+        "typebyaman.humanBehavior": {
+          "type": "boolean",
+          "default": true,
+          "description": "Simulate human keystroke cadence, log-normal digraph latency, visual reading pauses, and upward code inspection scrolls."
+        },
         "typebyaman.characterDelay": {
           "type": "number",
           "default": 50,

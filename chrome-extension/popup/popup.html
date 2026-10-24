@@ -62,6 +62,7 @@
     <!-- Tab Navigation -->
     <nav class="tab-nav" role="tablist" aria-label="Main navigation">
       <button class="tab-btn active" id="tab-editor" role="tab" aria-selected="true" aria-controls="panel-editor" data-tab="editor">Editor</button>
+      <button class="tab-btn" id="tab-design" role="tab" aria-selected="false" aria-controls="panel-design" data-tab="design">Design</button>
       <button class="tab-btn" id="tab-about" role="tab" aria-selected="false" aria-controls="panel-about" data-tab="about">About</button>
     </nav>
 
@@ -237,6 +238,106 @@
       <!-- Error / Info Message -->
       <div class="message-area" id="message-area" style="display:none" role="alert" aria-live="assertive">
         <div class="message-content" id="message-content"></div>
+      </div>
+
+    </div>
+
+    <!-- Design Mode Panel -->
+    <div id="panel-design" class="tab-panel" role="tabpanel" aria-labelledby="tab-design" style="display:none">
+
+      <!-- Design Mode Header -->
+      <div class="design-hero">
+        <div class="design-hero-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="3" stroke="url(#dg1)" stroke-width="1.8"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" stroke="url(#dg1)" stroke-width="1.8" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="dg1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#f59e0b"/>
+                <stop offset="100%" stop-color="#ef4444"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="design-hero-text">
+          <span class="design-hero-title">Design Mode</span>
+          <span class="design-hero-sub">Simulates 1 hr of human design activity</span>
+        </div>
+      </div>
+
+      <!-- Platform Detected -->
+      <div class="design-platform-row" id="design-platform-row">
+        <span class="design-platform-label">Platform</span>
+        <span class="design-platform-value" id="design-platform-value">Detecting&hellip;</span>
+      </div>
+
+      <!-- Session Progress -->
+      <div class="design-progress-block">
+        <div class="design-progress-labels">
+          <span class="design-time-label" id="design-elapsed">0:00:00</span>
+          <span class="design-pct-label" id="design-pct">0%</span>
+          <span class="design-time-label" id="design-remaining">1:00:00</span>
+        </div>
+        <div class="progress-track design-progress-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="design-progress-bar">
+          <div class="progress-fill design-fill" id="design-progress-fill" style="width:0%"></div>
+          <div class="progress-glow design-glow" id="design-progress-glow" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="design-stats-row">
+        <div class="design-stat">
+          <span class="design-stat-val" id="design-actions">0</span>
+          <span class="design-stat-lbl">Actions done</span>
+        </div>
+        <div class="design-stat-divider"></div>
+        <div class="design-stat">
+          <span class="design-stat-val" id="design-last-action">&mdash;</span>
+          <span class="design-stat-lbl">Last action</span>
+        </div>
+        <div class="design-stat-divider"></div>
+        <div class="design-stat">
+          <span class="design-stat-val status-badge idle" id="design-status-badge">Idle</span>
+          <span class="design-stat-lbl">Status</span>
+        </div>
+      </div>
+
+      <!-- Duration Selector -->
+      <div class="design-duration-row">
+        <label class="micro-label" for="design-duration">Session duration:</label>
+        <div class="design-duration-chips" role="group" aria-label="Session duration">
+          <button class="delay-chip" data-duration="1800000" id="dur-30">30 min</button>
+          <button class="delay-chip active" data-duration="3600000" id="dur-60">1 hour</button>
+          <button class="delay-chip" data-duration="7200000" id="dur-2h">2 hours</button>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls-section">
+        <div class="controls-row">
+          <button class="ctrl-btn primary" id="design-btn-start" aria-label="Start Design Mode">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            Start
+          </button>
+          <button class="ctrl-btn" id="design-btn-pause" disabled aria-label="Pause Design Mode">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            Pause
+          </button>
+          <button class="ctrl-btn" id="design-btn-resume" disabled aria-label="Resume Design Mode">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            Resume
+          </button>
+          <button class="ctrl-btn danger" id="design-btn-stop" disabled aria-label="Stop Design Mode">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            Stop
+          </button>
+        </div>
+      </div>
+
+      <!-- Supported Platforms Note -->
+      <div class="design-note" id="design-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Works on <strong>Canva, Figma, Adobe Express, Photoshop Web, Picsart, Pixlr</strong> and any web canvas app.
       </div>
 
     </div>

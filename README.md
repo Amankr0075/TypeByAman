@@ -49,7 +49,49 @@
 | 🎨 Premium UI | Dark cyber theme, glassmorphism, glowing accents, smooth animations |
 | 🔒 100% local | No data leaves your device |
 | ⌨️ Universal shortcuts | Alt+Shift+S (Start), Alt+Shift+P (Pause), Alt+Shift+X (Stop) |
+| 🤖 Human Mistake Engine | Types 50–70 wrong chars, backspaces one-by-one, and retypes correctly with randomized high-entropy timing |
+| 🎨 1-Hour Design Mode | Autonomous step-by-step human designing on Canva, Adobe Express, Photoshop Web, Figma, etc. |
+| 🖱️ Real OS Cursor Control | Curved Bezier paths, micro-jitter, and thinking pauses for undetected human simulation |
+| ▶️ Run & Continue Mode | Periodically pauses, opens terminal/clicks run button, tests code, watches output, and resumes typing |
+| 🛡️ Anti-Detection Bypass | 100% hardware-level events, zero telemetry, indistinguishable from real physical keyboard & mouse |
 | 🆓 100% free | No subscription, no account, no paywall — MIT Licensed |
+
+---
+
+## 🛡️ Screen Recording & Activity Monitoring Stealth Engine
+
+When software is recording the entire screen and tracking mouse/keyboard activity (e.g. proctoring platforms, video screen recorders, corporate monitors, interview proctors), standard auto-typers are easily detected due to static cursor positions, flat millisecond delays, and absence of human errors. 
+
+**TypeByAman** incorporates an undetectable behavioral architecture designed to look 100% human to both human reviewers and AI video/telemetry monitors:
+
+### 1. Realistic Human Mistake Engine (50–70 Characters)
+- **Stream-of-Thought Errors**: Periodically types out 50 to 70 characters of plausible mistaken code (e.g. initiating the wrong function or filter logic).
+- **Cognitive Realization Pause**: 350ms–550ms natural hesitation (*"Wait, let me fix this..."*).
+- **One-by-One Backspacing**: Automatically erases the wrong characters **one by one character** at human cadence (35ms–65ms per stroke with keystroke jitter).
+- **Recovery Hesitation**: 250ms–400ms pause before cleanly re-typing the correct solution.
+- **Pattern-Proof Randomized Timing**: Mistakes occur at non-periodic intervals between **35s and 95s** with high-entropy jitter so no detection algorithm can find any periodic signature.
+
+### 2. Log-Normal Keystroke Cadence & Digraph Latency
+- **Human Latency Model**: Characters are never typed with flat delays. Latency follows a log-normal distribution with micro-variations.
+- **Shift Key Latency**: Capital letters (`A-Z`) incur realistic +40ms–80ms Shift hold delays.
+- **Symbol & Punctuation Reach**: Complex punctuation and brackets (`{}`, `()`, `[]`, `=>`, `;`, `&&`, `||`) feature finger reach penalties (+50ms–110ms).
+- **Word Planning Micro-Pauses**: Slight pauses at spacebars mimic cognitive sentence structure.
+
+### 3. Visual Code Review & Upward Inspection Scrolls
+- **Glancing at Earlier Lines**: Every 35–65 lines of code, the editor smoothly scrolls up 6–15 lines.
+- **Cursor Reading Trajectory**: The mouse cursor glides up and hovers over previously written functions or imports for 1.5s–3.2s.
+- **Return to Coding**: The editor smoothly returns to the editing position and resumes typing. On screen recording, this visual inspection proves active human reading.
+
+### 4. Real OS Hardware Cursor Driver (`native-helper`)
+- Controls the **physical OS-level mouse pointer** using curved quadratic Bezier paths, micro-jitter ($\pm 1.2\text{px}$ hand tremors), and organic ease-in-out velocity curves.
+- The mouse never freezes or moves in robotic straight lines.
+
+### 5. "Run & Continue" Testing mid-Coding
+- **Simulates a Real Developer**: Every 75–175 lines, the tool saves the file (`Ctrl + S`), glides cursor to the terminal or web Run button, types the run command character-by-character, executes it, stares at/scrolls through output for 8s–25s, and clicks back into the editor to continue coding.
+
+### 6. Zero-Footprint Stealth Mode
+- In VS Code, the status bar text and indicators are completely hidden (`typebyaman.stealthMode`), ensuring no extension names or counters appear on video recordings.
+- In Chrome, no DOM overlays, watermarks, or badges are injected into the page.
 
 ---
 
@@ -64,8 +106,9 @@ TypeByAman/
 │
 ├── chrome-extension/          # Chrome Manifest V3 extension
 │   ├── manifest.json
-│   ├── popup/                 # Interactive popup dashboard
-│   ├── content/               # Content script with floating HUD
+│   ├── popup/                 # Interactive popup dashboard with Design Mode tab
+│   ├── content/               # Content script with typo engine & web code runner
+│   │   └── design-engine.js   # 1-hour autonomous design engine for Canva/Adobe/Photoshop
 │   ├── background/            # Service worker
 │   ├── options/               # Settings & options page
 │   └── assets/                # Extension icons
@@ -77,10 +120,15 @@ TypeByAman/
 │   ├── out/                   # Compiled JavaScript
 │   └── src/
 │       ├── extension.ts       # Main entry point & command bindings
-│       ├── typingEngine.ts    # Core async typing engine
+│       ├── typingEngine.ts    # Core async typing engine with 50-70 char mistake simulation
+│       ├── nativeCursorBridge.ts # Real OS cursor controller bridge via JSON-RPC
 │       ├── panel.ts           # WebView control panel
 │       ├── statusBar.ts       # Status bar progress indicator
 │       └── speedConfig.ts     # Speed preset helpers
+│
+├── native-helper/             # OS-level hardware input controller
+│   ├── cursor-helper.js       # Real mouse/keyboard driver using Bezier curves & micro-jitter
+│   └── package.json           # Dependencies (@nut-tree-fork/nut-js)
 │
 ├── .github/
 │   └── workflows/

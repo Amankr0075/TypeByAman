@@ -58,9 +58,10 @@ chrome.runtime.onInstalled.addListener((details) => {
  * (popup, options page) so they can update their UI.
  */
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  // Relay status/typing events from content → popup
-  if (['statusUpdate', 'targetPicked', 'typingDone', 'typingError'].includes(msg.action)) {
-    // Broadcast to all extension pages
+  // Relay status/typing events and Design Mode events from content → popup
+  const RELAY_ACTIONS = ['statusUpdate', 'targetPicked', 'typingDone', 'typingError', 'designStatus'];
+  if (RELAY_ACTIONS.includes(msg.action)) {
+    // Broadcast to all extension pages (popup, options)
     chrome.runtime.sendMessage(msg).catch(() => {
       // Popup might be closed — that's fine
     });

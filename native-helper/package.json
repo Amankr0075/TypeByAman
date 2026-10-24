@@ -1,0 +1,15 @@
+{
+  "name": "typebyaman-cursor-helper",
+  "version": "1.0.0",
+  "description": "TypeByAman Native OS Cursor Helper — controls real mouse cursor on desktop",
+  "main": "cursor-helper.js",
+  "scripts": {
+    "start": "node cursor-helper.js",
+    "install-deps": "npm install @nut-tree/nut-js"
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.0"
+  },
+  "author": "Aman Kumar",
+  "license": "MIT"
+}

@@ -73,7 +73,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "assets/*"
+        "assets/*",
+        "content/design-engine.js"
       ],
       "matches": [
         "<all_urls>"

@@ -1224,3 +1224,214 @@ body.is-typing .progress-fill {
 body.is-typing .app-header::after {
   animation-duration: 2.5s;
 }
+
+/* =========================================================
+   Design Mode Panel
+   ========================================================= */
+
+/* Hero header */
+.design-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(239,68,68,0.08) 100%);
+  border: 1px solid rgba(245,158,11,0.18);
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.design-hero-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.12));
+  border-radius: 10px;
+  border: 1px solid rgba(245,158,11,0.22);
+}
+
+.design-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.design-hero-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.design-hero-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Platform Row */
+.design-platform-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.design-platform-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.design-platform-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+/* Progress block */
+.design-progress-block {
+  margin-bottom: 12px;
+}
+
+.design-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.design-time-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.design-pct-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.design-progress-track {
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 99px;
+  overflow: visible;
+  position: relative;
+}
+
+.design-fill {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  border-radius: 99px;
+  height: 100%;
+  transition: width 0.8s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.design-glow {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  height: 14px;
+  background: linear-gradient(90deg, rgba(245,158,11,0.35), rgba(239,68,68,0.25));
+  border-radius: 99px;
+  filter: blur(6px);
+  pointer-events: none;
+  transition: width 0.8s ease;
+  z-index: 0;
+}
+
+/* Stats Row */
+.design-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  gap: 4px;
+}
+
+.design-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.design-stat-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.design-stat-lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.design-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-default);
+  flex-shrink: 0;
+}
+
+/* Duration chips */
+.design-duration-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.design-duration-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.design-duration-chips .delay-chip {
+  flex: 1;
+}
+
+/* Info Note */
+.design-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 9px 11px;
+  background: rgba(245,158,11,0.06);
+  border: 1px solid rgba(245,158,11,0.14);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.design-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #f59e0b;
+}
+
+.design-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}

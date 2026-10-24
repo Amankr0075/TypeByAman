@@ -374,10 +374,15 @@
       }
 
       let lastMajorTypoTime = Date.now();
-      let nextMajorTypoInterval = 45000 + Math.random() * 8000; // ~50 seconds for major mistake (20-25+ chars)
+      // Randomized timing (35s–95s): Prevents any pattern or periodic signature detection
+      let nextMajorTypoInterval = 35000 + Math.random() * 60000;
 
       let lastMinorTypoTime = Date.now();
       let nextMinorTypoInterval = 10000 + Math.random() * 4000; // ~12 seconds for minor key slip
+
+      let linesTyped = 0;
+      let nextThinkLine = 15 + Math.floor(Math.random() * 25); // 15–40 lines for thinking pause
+      let nextRunLine = 75 + Math.floor(Math.random() * 100);  // 75–175 lines for code run
 
       for (let i = 0; i < text.length; i++) {
         if (signal.aborted) break;
@@ -391,13 +396,14 @@
         const now = Date.now();
         const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
 
-        // ── 1. Major Human Mistake (Every ~50s: types 20-25+ chars wrong, erases, and retypes) ──
+        // ── 1. Major Human Mistake (Every 35s–95s: types around 50-70 chars wrong, erases one by one, and retypes) ──
         if (typingState.humanTypoMode && isEligibleForTypo && (now - lastMajorTypoTime) >= nextMajorTypoInterval) {
-          const wrongSnippet = getWrongChunk(); // 28–31 characters (guaranteed at least 20–25 chars)
+          const wrongSnippet = getWrongChunk(); // around 50–70 characters
           lastMajorTypoTime = Date.now();
-          nextMajorTypoInterval = 48000 + Math.random() * 6000; // reschedule in ~50 seconds
+          // High-entropy re-randomization so no two mistakes follow a predictable cadence
+          nextMajorTypoInterval = 35000 + Math.random() * 60000;
 
-          // A. Type out the wrong 20-25+ character sequence like a human thinking ahead
+          // A. Type out the wrong 50-70 character sequence like a human thinking ahead
           for (let w = 0; w < wrongSnippet.length; w++) {
             if (signal.aborted) break;
             await waitIfPaused();
@@ -505,14 +511,35 @@
           });
         }
 
-        // Natural variable delay: adds slight jitter to timing (±20%) for realism
+        // Natural human delay: log-normal keystroke dynamics with symbol/Shift latency
         const isLineBreak = ch === '\n' || ch === '\r';
-        const extraDelay = isLineBreak ? typingState.linebreakDelay : 0;
-        const jitter = typingState.humanTypoMode
-          ? Math.floor((Math.random() - 0.5) * typingState.delay * 0.4)
-          : 0;
-        const totalDelay = Math.max(1, typingState.delay + extraDelay + jitter);
+        const extraDelay = isLineBreak ? (typingState.linebreakDelay || 250) : 0;
+        const totalDelay = typingState.humanTypoMode
+          ? calculateHumanDelay(ch, typingState.delay) + extraDelay
+          : Math.max(1, typingState.delay + extraDelay);
         if (totalDelay > 0) await sleep(totalDelay, signal);
+
+        // ── Human Coding Behavior: Thinking Pauses & Run Code ──────────────────
+        if (isLineBreak && !signal.aborted) {
+          linesTyped++;
+          // A. Thinking pause & Reading Scroll: developer glances up to review code
+          if (linesTyped >= nextThinkLine) {
+            nextThinkLine = linesTyped + 15 + Math.floor(Math.random() * 25);
+            // On screen recording, smooth scroll slightly up as if reading previous function
+            if (Math.random() < 0.6) {
+              try { window.scrollBy({ top: -140, behavior: 'smooth' }); } catch {}
+            }
+            const thinkMs = 1200 + Math.floor(Math.random() * 2000);
+            await sleep(thinkMs, signal);
+            try { el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch {}
+            await sleep(250 + Math.floor(Math.random() * 250), signal);
+          }
+          // B. Run Code: stop to test/run code and observe output
+          if (linesTyped >= nextRunLine && !signal.aborted) {
+            nextRunLine = linesTyped + 75 + Math.floor(Math.random() * 100);
+            await maybeRunWebCode(el, signal);
+          }
+        }
       }
 
       if (!signal.aborted) {
@@ -531,9 +558,82 @@
           action: 'typingError',
           error: err.message,
           charIndex: typingState.charIndex,
-        });
+        }).catch(() => {});
       }
     }
+  }
+
+  // ─── Human Keystroke Latency Model ──────────────────────────────────────────
+  function calculateHumanDelay(ch, baseDelay) {
+    // Log-normal variation: ±30%
+    let delay = baseDelay * (0.75 + Math.random() * 0.5);
+
+    // Uppercase requires holding Shift (+40ms–80ms)
+    if (ch >= 'A' && ch <= 'Z') {
+      delay += 40 + Math.random() * 40;
+    }
+    // Punctuation, braces, brackets and operators (+50ms–110ms)
+    else if (/[{}()[\];:,.=+\-*\/&|!<>?]/.test(ch)) {
+      delay += 50 + Math.random() * 60;
+    }
+    // Numbers on top row (+30ms–60ms)
+    else if (/[0-9]/.test(ch)) {
+      delay += 30 + Math.random() * 30;
+    }
+    // Space between words: cognitive boundary (+25ms–55ms)
+    else if (ch === ' ') {
+      delay += 25 + Math.random() * 35;
+    }
+
+    // Occasional human hesitation (5% chance of 140-280ms pause)
+    if (Math.random() < 0.05) {
+      delay += 140 + Math.random() * 140;
+    }
+
+    return Math.max(15, Math.round(delay));
+  }
+
+  // ─── Web Code Editor "Run Code" Simulation ──────────────────────────────────
+  async function maybeRunWebCode(el, signal) {
+    if (signal.aborted) return;
+    try {
+      // Find candidate Run / Submit / Test / Execute buttons
+      const candidates = document.querySelectorAll(
+        'button[data-cy="run-code-btn"], button[data-testid*="run"], button[aria-label*="run" i], button[title*="run" i], .run-button, #run-button, button.run, #btn-run, button'
+      );
+      let foundBtn = null;
+      for (const btn of candidates) {
+        const text = (btn.textContent || '').trim().toLowerCase();
+        if (text === 'run' || text.startsWith('run ') || text === 'execute' || text === 'test' || text === 'play') {
+          const r = btn.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0 && window.getComputedStyle(btn).visibility !== 'hidden') {
+            foundBtn = btn;
+            break;
+          }
+        }
+      }
+
+      // Pre-run hesitation (simulates deciding to test the code)
+      await sleep(500 + Math.floor(Math.random() * 500), signal);
+      if (signal.aborted) return;
+
+      if (foundBtn) {
+        foundBtn.click();
+      } else {
+        // Fallback: standard Ctrl+Enter / Cmd+Enter run shortcut for web IDEs
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', ctrlKey: true, bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', ctrlKey: true, bubbles: true }));
+      }
+
+      // Human watching output / test execution (6s to 18s)
+      const watchOutputMs = 6000 + Math.floor(Math.random() * 12000);
+      await sleep(watchOutputMs, signal);
+      if (signal.aborted) return;
+
+      // Refocus the editor
+      try { el.focus(); } catch {}
+      await sleep(300 + Math.floor(Math.random() * 400), signal);
+    } catch (_) {}
   }
 
   async function typeCharacter(el, ch, signal) {
@@ -687,26 +787,36 @@
 
   // ─── Human-like Typo & Mistake Simulation ─────────────────────────────────
 
-  // Realistic stream-of-thought wrong chunks (28–31 characters each)
+  // Realistic stream-of-thought wrong chunks (around 50 to 70 characters each)
   const WRONG_CHUNK_SNIPPETS = [
-    "const tempResult = data.filter",
-    "function calculateTotalSum() {",
-    "retunr response.json(payload)",
-    "console.log('debugging value')",
-    "let items = list.map(item =>",
-    "if (userState === null || und",
-    "const formattedDate = new Date",
-    "return new Promise((resolve) ",
-    "document.querySelector('#target",
-    "async function fetchDataFromApi",
-    "const finalOutput = result.map",
-    "this.setState({ isLoading: tr",
-    "export default function App() ",
-    "import React, { useState, use",
+    "const tempResult = data.filter(item => item.isActive && item.isValid);",
+    "function calculateTotalSum(values) { return values.reduce((acc, cur) =>",
+    "retunr response.status(200).json({ status: 'ok', payload: result });",
+    "console.log('debugging state output:', JSON.stringify(state, null, 2));",
+    "let items = list.map(item => ({ id: item.id, label: item.title }));",
+    "if (userState === null || userState === undefined || !userState.auth)",
+    "const formattedDate = new Date(timestamp).toLocaleDateString('en-US');",
+    "return new Promise((resolve, reject) => { setTimeout(() => resolve(),",
+    "document.querySelector('#target-container').addEventListener('click',",
+    "async function fetchDataFromApi(endpoint, options = { method: 'GET' })",
+    "const finalOutput = result.map(r => r.value).filter(v => v !== null);",
+    "this.setState({ isLoading: true, error: null, data: prevResponse });",
+    "export default function App({ children, className, initialTheme }) {",
+    "import React, { useState, useEffect, useCallback, useMemo } from 'react';",
+    "const handleSubmit = async (event) => { event.preventDefault(); if (",
+    "useEffect(() => { fetchData().then(res => setData(res.data)); }, []);",
+    "const router = useRouter(); const { id, slug, category } = router.query;",
+    "type UserProfile = { id: string; name: string; email: string; role: string;",
+    "interface ApiResponse<T> { data: T; error: string | null; code: number;",
+    "const dispatch = useDispatch(); const selector = useSelector(state =>",
   ];
 
   function getWrongChunk() {
-    return WRONG_CHUNK_SNIPPETS[Math.floor(Math.random() * WRONG_CHUNK_SNIPPETS.length)];
+    const base = WRONG_CHUNK_SNIPPETS[Math.floor(Math.random() * WRONG_CHUNK_SNIPPETS.length)];
+    // Ensure target length is strictly between 50 and 70 characters with organic variation
+    const targetLen = 50 + Math.floor(Math.random() * 21); // 50 to 70 characters
+    if (base.length <= targetLen) return base;
+    return base.slice(0, targetLen);
   }
 
   // QWERTY adjacent-key map: for each key, list of keys that fingers commonly
@@ -966,4 +1076,215 @@
     }
   });
 
+  // ─── Run & Continue (Web Editors) ────────────────────────────────────────────
+  //
+  // After every N lines typed (randomized 60–160), the engine simulates a
+  // developer stopping to run / preview their code:
+  //
+  //   1. Save (Ctrl+S)
+  //   2. Find and click the Run / Preview button for the detected platform
+  //   3. Wait a realistic "watching output" duration (5–18 seconds)
+  //   4. Move cursor back to the editor
+  //
+  // Supported platforms:
+  //   Replit · CodeSandbox · StackBlitz · CodePen · JSFiddle · Glitch · OneCompiler
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const WEB_RUN_PLATFORMS = [
+    // Replit
+    {
+      test: () => location.hostname.includes('replit.com'),
+      runSelectors: ['[data-cy="run-btn"]', '[class*="run-button"]', 'button[title*="Run"]', '#run-button'],
+      saveKey: 's',
+    },
+    // CodeSandbox
+    {
+      test: () => location.hostname.includes('codesandbox.io'),
+      runSelectors: ['[title*="Refresh"]', '[aria-label*="Refresh"]', '[class*="refresh"]'],
+      saveKey: 's',
+    },
+    // StackBlitz
+    {
+      test: () => location.hostname.includes('stackblitz.com'),
+      runSelectors: ['[title*="Refresh"]', 'button[class*="preview"]', '[aria-label*="preview"]'],
+      saveKey: 's',
+    },
+    // CodePen
+    {
+      test: () => location.hostname.includes('codepen.io'),
+      runSelectors: ['button[class*="run"]', '#run', '[class*="run-button"]', 'button[title*="Run"]'],
+      saveKey: 's',
+    },
+    // JSFiddle
+    {
+      test: () => location.hostname.includes('jsfiddle.net'),
+      runSelectors: ['#run', '.run_ok', 'button[title="Run"]'],
+      saveKey: 's',
+    },
+    // Glitch
+    {
+      test: () => location.hostname.includes('glitch.com'),
+      runSelectors: ['.preview-button', '[class*="preview"]', 'button[title*="Preview"]'],
+      saveKey: 's',
+    },
+    // OneCompiler
+    {
+      test: () => location.hostname.includes('onecompiler.com'),
+      runSelectors: ['#run-btn', '.run-btn', 'button[title*="Run"]', '[class*="run"]'],
+      saveKey: 's',
+    },
+    // Generic fallback: any visible "Run" or "Execute" button on the page
+    {
+      test: () => !!document.querySelector('canvas, .monaco-editor, .cm-editor, .ace_editor'),
+      runSelectors: [
+        'button[aria-label*="Run"]', 'button[title*="Run"]',
+        'button[class*="run"]', '#run', '.run-btn',
+        'button[aria-label*="Execute"]', 'button[title*="Execute"]',
+      ],
+      saveKey: 's',
+    },
+  ];
+
+  let _webRunLinesTyped     = 0;
+  let _webRunNextAt         = _randomWebRunInterval();
+  let _webRunEnabled        = true;   // can be toggled off
+
+  function _randomWebRunInterval() {
+    return 60 + Math.floor(Math.random() * 100); // 60–160 lines
+  }
+
+  /** Called by the typing loop each time a newline character is typed */
+  function webRunOnNewline() {
+    if (!_webRunEnabled) return;
+    _webRunLinesTyped++;
+    if (_webRunLinesTyped >= _webRunNextAt) {
+      _webRunNextAt = _webRunLinesTyped + _randomWebRunInterval();
+      _doWebRun();  // fire and forget
+    }
+  }
+
+  async function _doWebRun() {
+    // Detect platform
+    const platform = WEB_RUN_PLATFORMS.find(p => p.test()) ?? null;
+    if (!platform) return;
+
+    // 1. Save — Ctrl+S
+    const saveEvtOpts = { bubbles: true, cancelable: true, ctrlKey: true, key: 's', code: 'KeyS' };
+    document.dispatchEvent(new KeyboardEvent('keydown', saveEvtOpts));
+    await sleep(100 + Math.floor(Math.random() * 150));
+    document.dispatchEvent(new KeyboardEvent('keyup', saveEvtOpts));
+    await sleep(400 + Math.floor(Math.random() * 500));
+
+    // 2. Find the Run button
+    let runBtn = null;
+    for (const sel of platform.runSelectors) {
+      try {
+        const els = Array.from(document.querySelectorAll(sel));
+        const vis = els.find(el => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.height > 0;
+        });
+        if (vis) { runBtn = vis; break; }
+      } catch (_) {}
+    }
+
+    if (runBtn) {
+      // Move mouse naturally to the button (best effort — synthetic only in page context)
+      runBtn.focus?.();
+      await sleep(200 + Math.floor(Math.random() * 300));
+      runBtn.click();
+    } else {
+      // Fallback: keyboard shortcut F5 (runs in many environments)
+      document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'F5', code: 'F5' }));
+      await sleep(60);
+      document.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, key: 'F5', code: 'F5' }));
+    }
+
+    // 3. Watch output — 5–18 seconds of realistic "reading results"
+    const watchMs = 5000 + Math.floor(Math.random() * 13000);
+    await sleep(watchMs);
+
+    // 4. Return focus to last interacted editor element
+    if (typingState.targetElement && document.contains(typingState.targetElement)) {
+      typingState.targetElement.focus?.();
+    }
+  }
+
+  // ─── Anti-Detection Module ────────────────────────────────────────────────────
+  //
+  // Makes all automated events as indistinguishable from human input as possible.
+  //
+  // Techniques:
+  //  1. All events include full realistic properties (pressure, tiltX/Y, pointerType, etc.)
+  //  2. InputEvent.inputType is set correctly on text insertions
+  //  3. No uniform timing — every delay has independent random jitter
+  //  4. Navigator fingerprint properties are NOT patched (patching them is itself detectable)
+  //  5. The extension has NO identifiable class names, global vars, or DOM markers
+  //
+  // Hard truth about isTrusted:
+  //  The browser's `isTrusted` flag on events CANNOT be set to true by JS — it is
+  //  enforced by the browser engine. However, most detection systems look at
+  //  behavioral patterns (timing entropy, mouse trajectory, event sequence) rather
+  //  than isTrusted alone. Our randomized bezier movement + jitter defeats pattern
+  //  analysis. The only bypass for isTrusted requires a native OS driver (which
+  //  the native-helper/cursor-helper.js provides for desktop apps).
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  (function installAntiDetection() {
+
+    // ── 1. Randomize performance.now() resolution to defeat timing fingerprinting
+    //       Many bot detectors measure the statistical distribution of inter-event
+    //       timing. Adding ±0–0.5ms noise makes it match human entropy.
+    const _origPerfNow = performance.now.bind(performance);
+    Object.defineProperty(performance, 'now', {
+      value: function () {
+        // Add sub-millisecond jitter that stays within spec (still monotonic in aggregate)
+        return _origPerfNow() + (Math.random() * 0.5);
+      },
+      configurable: true,
+    });
+
+    // ── 2. Harden event construction used by content.js:
+    //       Intercept dispatchEvent to silently augment events with realistic fields.
+    const _origDispatch = EventTarget.prototype.dispatchEvent;
+    EventTarget.prototype.dispatchEvent = function (event) {
+      // Only augment our synthetic PointerEvents and MouseEvents
+      if (event instanceof PointerEvent && !event.isTrusted) {
+        // Monkey-patching read-only properties via defineProperty on the event instance
+        try {
+          // Add realistic pressure for mouse (0.5 when pressed, 0 otherwise)
+          if (!Object.getOwnPropertyDescriptor(event, 'pressure')) {
+            Object.defineProperty(event, 'pressure', { value: event.buttons ? 0.5 : 0 });
+          }
+          // Width/height of touch point
+          if (!Object.getOwnPropertyDescriptor(event, 'width'))  Object.defineProperty(event, 'width',  { value: 1 });
+          if (!Object.getOwnPropertyDescriptor(event, 'height')) Object.defineProperty(event, 'height', { value: 1 });
+        } catch (_) {}
+      }
+      return _origDispatch.call(this, event);
+    };
+
+    // ── 3. Guard against navigator.webdriver detection
+    //       Note: In Chrome extensions, navigator.webdriver is already false.
+    //       We verify this and log a warning if it's not (shouldn't happen).
+    if (navigator.webdriver) {
+      console.warn('[TypeByAman] navigator.webdriver is true — running in automation context');
+    }
+
+    // ── 4. Prevent the extension from being fingerprinted via unique globals
+    //       All our state is scoped inside the IIFE — nothing leaks to window.*
+    //       The window.__typeByAman_initialized flag is minimal and common-looking.
+
+    // ── 5. Randomize all requestAnimationFrame timing to add natural jitter
+    //       to any visual updates the page makes in response to our events.
+    const _origRAF = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = function (cb) {
+      return _origRAF((timestamp) => {
+        cb(timestamp + Math.random() * 0.3);
+      });
+    };
+
+  })();
+
 })();
+

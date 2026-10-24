@@ -11,15 +11,18 @@ import { TypingEngine }  from './typingEngine';
 import { TypeByAmanPanel } from './panel';
 import { StatusBarManager } from './statusBar';
 import { SpeedConfig } from './speedConfig';
+import { NativeCursorBridge } from './nativeCursorBridge';
 
 // ─── Extension State ─────────────────────────────────────────────────────────
 
 let engine:     TypingEngine     | null = null;
 let statusBar:  StatusBarManager | null = null;
+let extContext: vscode.ExtensionContext | null = null;
 
 // ─── Activate ────────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
+  extContext = context;
 
   // Status bar
   statusBar = new StatusBarManager();
@@ -61,6 +64,7 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   engine?.stop();
   statusBar?.dispose();
+  NativeCursorBridge.getInstance().stop();
 }
 
 // ─── Panel Command Handler ────────────────────────────────────────────────────
@@ -85,6 +89,8 @@ interface TBAConfig {
   lineBreakDelay: number;
   startDelay:     number;
   speedPreset:    string;
+  enableRunPause: boolean;
+  runCommand:     string;
 }
 
 function getConfig(): TBAConfig {
@@ -109,6 +115,8 @@ function getConfig(): TBAConfig {
     lineBreakDelay: Math.max(0, cfg.get<number>('lineBreakDelay', 0)),
     startDelay:     Math.max(0, cfg.get<number>('startDelay', 0)),
     speedPreset:    preset,
+    enableRunPause: cfg.get<boolean>('enableRunPause', true),
+    runCommand:     cfg.get<string>('runCommand', ''),
   };
 }
 
@@ -188,6 +196,9 @@ async function cmdStart(payload?: StartPayload) {
     delay,
     lineBreakDelay,
     startDelay,
+    enableRunPause: cfg.enableRunPause,
+    runCommand:     cfg.runCommand || undefined,
+    extensionPath:  extContext?.extensionPath,
     onProgress: (charIndex, totalChars) => {
       statusBar?.update('typing', charIndex, totalChars, delay);
       TypeByAmanPanel.postMessage({

@@ -590,9 +590,240 @@ https://github.com/Amankr0075/TypeByAman`;
       updateStatus('done', msg.totalChars, msg.totalChars);
       showMessage('✓ Typing complete!', 'success', 3000);
     }
+    // ── Design Mode Status ──────────────────────────────────────
+    if (msg.action === 'designStatus') {
+      handleDesignStatus(msg.detail || {});
+    }
   });
+}
+
+// ─── Design Mode ─────────────────────────────────────────────────────────────
+
+const designUI = {
+  statusBadge:    null,
+  platformValue:  null,
+  elapsed:        null,
+  remaining:      null,
+  pct:            null,
+  fill:           null,
+  glow:           null,
+  progressBar:    null,
+  actions:        null,
+  lastAction:     null,
+  btnStart:       null,
+  btnPause:       null,
+  btnResume:      null,
+  btnStop:        null,
+  durationChips:  null,
+};
+
+let designSessionDuration = 3600000; // default 1 hour
+let designTimerInterval   = null;
+let designSessionStart    = null;
+
+function initDesignUI() {
+  designUI.statusBadge   = document.getElementById('design-status-badge');
+  designUI.platformValue = document.getElementById('design-platform-value');
+  designUI.elapsed       = document.getElementById('design-elapsed');
+  designUI.remaining     = document.getElementById('design-remaining');
+  designUI.pct           = document.getElementById('design-pct');
+  designUI.fill          = document.getElementById('design-progress-fill');
+  designUI.glow          = document.getElementById('design-progress-glow');
+  designUI.progressBar   = document.getElementById('design-progress-bar');
+  designUI.actions       = document.getElementById('design-actions');
+  designUI.lastAction    = document.getElementById('design-last-action');
+  designUI.btnStart      = document.getElementById('design-btn-start');
+  designUI.btnPause      = document.getElementById('design-btn-pause');
+  designUI.btnResume     = document.getElementById('design-btn-resume');
+  designUI.btnStop       = document.getElementById('design-btn-stop');
+  designUI.durationChips = document.querySelectorAll('.design-duration-chips .delay-chip');
+
+  // Duration chip selection
+  designUI.durationChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      designUI.durationChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      designSessionDuration = parseInt(chip.dataset.duration, 10);
+      // Update the remaining display
+      if (designUI.remaining) designUI.remaining.textContent = formatTime(designSessionDuration);
+    });
+  });
+
+  // Control buttons
+  if (designUI.btnStart) designUI.btnStart.addEventListener('click', () => sendDesignCmd('start'));
+  if (designUI.btnPause) designUI.btnPause.addEventListener('click', () => sendDesignCmd('pause'));
+  if (designUI.btnResume) designUI.btnResume.addEventListener('click', () => sendDesignCmd('resume'));
+  if (designUI.btnStop) designUI.btnStop.addEventListener('click', () => sendDesignCmd('stop'));
+
+  // Detect platform on current tab
+  detectDesignPlatform();
+}
+
+function formatTime(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+async function sendDesignCmd(cmd) {
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) return;
+
+  // Inject the design engine if not already present
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content/design-engine.js'],
+    });
+  } catch (_) {
+    // Already injected or injection failed — proceed anyway
+  }
+
+  // Post message into the page context via scripting.executeScript
+  const payload = { tbaDesign: cmd };
+  if (cmd === 'start') payload.duration = designSessionDuration;
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (data) => window.postMessage(data, '*'),
+      args: [payload],
+    });
+  } catch (err) {
+    console.warn('[TypeByAman] Design cmd failed:', err);
+  }
+
+  // Optimistically update UI
+  if (cmd === 'start') {
+    designSessionStart = Date.now();
+    startDesignTimer();
+    setDesignButtons('running');
+    setDesignBadge('running');
+  } else if (cmd === 'pause') {
+    clearDesignTimer();
+    setDesignButtons('paused');
+    setDesignBadge('paused');
+  } else if (cmd === 'resume') {
+    startDesignTimer();
+    setDesignButtons('running');
+    setDesignBadge('running');
+  } else if (cmd === 'stop') {
+    clearDesignTimer();
+    setDesignButtons('idle');
+    setDesignBadge('stopped');
+  }
+}
+
+function startDesignTimer() {
+  clearDesignTimer();
+  designTimerInterval = setInterval(() => {
+    if (!designSessionStart) return;
+    const elapsed   = Date.now() - designSessionStart;
+    const remaining = Math.max(0, designSessionDuration - elapsed);
+    const pct       = Math.min(100, Math.round((elapsed / designSessionDuration) * 100));
+
+    if (designUI.elapsed)   designUI.elapsed.textContent   = formatTime(elapsed);
+    if (designUI.remaining) designUI.remaining.textContent = formatTime(remaining);
+    if (designUI.pct)       designUI.pct.textContent       = pct + '%';
+    if (designUI.fill)      designUI.fill.style.width      = pct + '%';
+    if (designUI.glow)      designUI.glow.style.width      = pct + '%';
+    if (designUI.progressBar) designUI.progressBar.setAttribute('aria-valuenow', pct);
+
+    if (remaining === 0) {
+      clearDesignTimer();
+      setDesignButtons('idle');
+      setDesignBadge('done');
+    }
+  }, 1000);
+}
+
+function clearDesignTimer() {
+  if (designTimerInterval) { clearInterval(designTimerInterval); designTimerInterval = null; }
+}
+
+function handleDesignStatus(detail) {
+  const { state, elapsed, remaining, pct, totalActions, platform, lastAction } = detail;
+
+  if (platform && designUI.platformValue) {
+    designUI.platformValue.textContent = platform.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+  if (totalActions !== undefined && designUI.actions) {
+    designUI.actions.textContent = totalActions;
+  }
+  if (lastAction && designUI.lastAction) {
+    designUI.lastAction.textContent = lastAction;
+  }
+  if (pct !== undefined) {
+    if (designUI.fill) designUI.fill.style.width = pct + '%';
+    if (designUI.glow) designUI.glow.style.width = pct + '%';
+    if (designUI.pct)  designUI.pct.textContent  = pct + '%';
+    if (designUI.progressBar) designUI.progressBar.setAttribute('aria-valuenow', pct);
+  }
+  if (elapsed !== undefined && designUI.elapsed) {
+    designUI.elapsed.textContent = formatTime(elapsed);
+  }
+  if (remaining !== undefined && designUI.remaining) {
+    designUI.remaining.textContent = formatTime(remaining);
+  }
+
+  if (state === 'done') {
+    clearDesignTimer();
+    setDesignButtons('idle');
+    setDesignBadge('done');
+  } else if (state === 'stopped') {
+    clearDesignTimer();
+    setDesignButtons('idle');
+    setDesignBadge('stopped');
+  } else if (state === 'error') {
+    clearDesignTimer();
+    setDesignButtons('idle');
+    setDesignBadge('error');
+  }
+}
+
+function setDesignBadge(status) {
+  if (!designUI.statusBadge) return;
+  const labels = { running: 'Running', paused: 'Paused', done: 'Done ✓', stopped: 'Stopped', idle: 'Idle', error: 'Error' };
+  designUI.statusBadge.textContent = labels[status] || status;
+  designUI.statusBadge.className = `design-stat-val status-badge ${status === 'running' ? 'typing' : status === 'paused' ? 'paused' : status === 'done' ? 'done' : 'idle'}`;
+}
+
+function setDesignButtons(state) {
+  if (!designUI.btnStart) return;
+  const running = state === 'running';
+  const paused  = state === 'paused';
+  const idle    = state === 'idle';
+  designUI.btnStart.disabled  = !idle;
+  designUI.btnPause.disabled  = !running;
+  designUI.btnResume.disabled = !paused;
+  designUI.btnStop.disabled   = idle;
+}
+
+async function detectDesignPlatform() {
+  if (!designUI.platformValue) return;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) return;
+    const url  = new URL(tab.url);
+    const host = url.hostname;
+    let name = 'Generic Canvas';
+    if (host.includes('canva.com'))           name = 'Canva';
+    else if (host.includes('figma.com'))      name = 'Figma';
+    else if (host.includes('express.adobe')) name = 'Adobe Express';
+    else if (host.includes('photoshop.adobe')) name = 'Photoshop Web';
+    else if (host.includes('picsart.com'))    name = 'Picsart';
+    else if (host.includes('pixlr.com'))      name = 'Pixlr';
+    else if (host.includes('vectr.com'))      name = 'Vectr';
+    else if (host.includes('gravit.io'))      name = 'Gravit Designer';
+    designUI.platformValue.textContent = name;
+  } catch (_) {}
 }
 
 // ─── Boot ────────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  initDesignUI();
+});

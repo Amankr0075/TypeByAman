@@ -8,6 +8,7 @@
  */
 
 import * as vscode from 'vscode';
+import { NativeCursorBridge } from './nativeCursorBridge';
 
 export interface TypingEngineConfig {
   text: string;
@@ -15,6 +16,13 @@ export interface TypingEngineConfig {
   delay: number;
   lineBreakDelay: number;
   startDelay: number;
+  // ── Run & Continue ─────────────────────────────────────────────────────────
+  /** Enable periodic "save + run code" pauses to simulate a developer testing. */
+  enableRunPause: boolean;
+  /** Custom terminal command to run. If empty, auto-detected from file extension. */
+  runCommand?: string;
+  /** Path to the VS Code extension for locating native cursor helper. */
+  extensionPath?: string;
   onProgress: (charIndex: number, totalChars: number) => void;
   onPause: (charIndex: number, totalChars: number) => void;
   onDone: (totalChars: number) => void;
@@ -30,6 +38,21 @@ export class TypingEngine {
   private _stopped: boolean = false;
   private _abortController: AbortController;
   private _pausePromise: (() => void) | null = null;
+
+  // ── Run & Continue state ────────────────────────────────────────────────────
+  private _linesTyped: number = 0;
+  /** Next line count at which we will do a "run code" pause (randomized 80–200 lines). */
+  private _nextRunAtLine: number = this._randomRunInterval();
+  /** Next line count at which we pause briefly to "re-read" what we wrote (15–40 lines). */
+  private _nextThinkAtLine: number = this._randomThinkInterval();
+
+  private _randomRunInterval(): number {
+    return 80 + Math.floor(Math.random() * 120); // 80–200 lines between runs
+  }
+
+  private _randomThinkInterval(): number {
+    return 15 + Math.floor(Math.random() * 25); // 15–40 lines between thinking pauses
+  }
 
   constructor(config: TypingEngineConfig) {
     this.config = config;
@@ -68,6 +91,7 @@ export class TypingEngine {
       this._pausePromise();
       this._pausePromise = null;
     }
+    NativeCursorBridge.getInstance().stop();
     this.config.onStop(this._charIndex);
   }
 
@@ -88,6 +112,11 @@ export class TypingEngine {
     const signal = this._abortController.signal;
 
     try {
+      // Start native OS cursor bridge if extensionPath provided
+      if (this.config.extensionPath) {
+        NativeCursorBridge.getInstance().start(this.config.extensionPath).catch(() => {});
+      }
+
       // Start delay
       if (startDelay > 0) await this._sleep(startDelay, signal);
 
@@ -97,7 +126,8 @@ export class TypingEngine {
       const total = text.length;
 
       let lastMajorTypoTime = Date.now();
-      let nextMajorTypoInterval = 45000 + Math.random() * 8000; // ~50 seconds (45s - 55s)
+      // Randomized across 35s–90s to prevent any detectable pattern
+      let nextMajorTypoInterval = 35000 + Math.random() * 55000;
 
       let lastMinorTypoTime = Date.now();
       let nextMinorTypoInterval = 10000 + Math.random() * 4000; // ~12 seconds for minor key slip
@@ -115,11 +145,12 @@ export class TypingEngine {
         const now = Date.now();
         const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
 
-        // ── 1. Major Human Mistake (Every ~50s: types 20-25+ chars wrong, erases, and retypes) ──
+        // ── 1. Major Human Mistake (Every 35s–90s: types 50-70 chars wrong, erases, and retypes) ──
         if (isEligibleForTypo && (now - lastMajorTypoTime) >= nextMajorTypoInterval) {
-          const wrongSnippet = getWrongChunk(); // 28–31 characters (guaranteed at least 20–25 chars)
+          const wrongSnippet = getWrongChunk(); // 50–70 characters of plausible-looking wrong code
           lastMajorTypoTime = Date.now();
-          nextMajorTypoInterval = 48000 + Math.random() * 6000; // reschedule in ~50 seconds
+          // Re-randomize aggressively so two mistakes never fall on a predictable cadence
+          nextMajorTypoInterval = 35000 + Math.random() * 55000;
 
           // A. Type out the wrong 20-25+ character sequence
           for (let w = 0; w < wrongSnippet.length; w++) {
@@ -216,14 +247,50 @@ export class TypingEngine {
         // Type the character
         await this._typeChar(editor, ch, signal);
 
+        // Subtly nudge OS mouse cursor occasionally while typing (simulates hand on mouse)
+        if (i % 40 === 0 && Math.random() < 0.35) {
+          NativeCursorBridge.getInstance().nudgeSubtly().catch(() => {});
+        }
+
+        // ── Track newlines for Visual Code Review / Run & Continue / Thinking Pauses ────
+        if (ch === '\n') {
+          this._linesTyped++;
+
+          // A. Visual Code Inspection (every 35–65 lines, 60% chance):
+          //    Scrolls up slightly, hovers mouse to read earlier function/import, scrolls back down.
+          //    On a screen recording, this completely mimics real human developer behavior.
+          if (this._linesTyped % 40 === 0 && Math.random() < 0.65) {
+            await this._inspectEarlierCode(editor, signal);
+          }
+          // B. Thinking pause: re-reads recent lines (15–40 lines)
+          else if (this._linesTyped >= this._nextThinkAtLine) {
+            this._nextThinkAtLine = this._linesTyped + this._randomThinkInterval();
+            NativeCursorBridge.getInstance().wander(40, 25).catch(() => {});
+            const thinkMs = 900 + Math.floor(Math.random() * 2200); // 0.9s – 3.1s
+            if (!signal.aborted && !this._stopped) {
+              await this._sleep(thinkMs, signal);
+            }
+          }
+
+          // C. Run & Continue: save + run code in terminal + return to editor
+          if (this.config.enableRunPause && this._linesTyped >= this._nextRunAtLine) {
+            this._nextRunAtLine = this._linesTyped + this._randomRunInterval();
+            if (!signal.aborted && !this._stopped) {
+              await this._runCode(editor, signal);
+            }
+          }
+        }
+        // ──────────────────────────────────────────────────────────────────────
+
         // Progress callback (throttled)
         if (i % 25 === 0 || i === total - 1) {
           this.config.onProgress(i + 1, total);
         }
 
-        // Delay
+        // Delay: Gaussian human keystroke dynamics
         const isLineBreak = ch === '\n' || ch === '\r';
-        const totalDelay = this.config.delay + (isLineBreak ? lineBreakDelay : 0);
+        const baseDelay = isLineBreak ? (lineBreakDelay || 250) : this.config.delay;
+        const totalDelay = this._getHumanKeystrokeDelay(ch, baseDelay);
         if (totalDelay > 0 && !signal.aborted) {
           await this._sleep(totalDelay, signal);
         }
@@ -311,6 +378,197 @@ export class TypingEngine {
     }
   }
 
+  /**
+   * Calculates realistic human keystroke timing with log-normal Gaussian jitter,
+   * symbol/bracket latency, Shift modifier delays, and inter-word rhythm.
+   */
+  private _getHumanKeystrokeDelay(ch: string, baseDelay: number): number {
+    // 1. Log-normal Gaussian jitter around base delay: ±30%
+    let delay = baseDelay * (0.75 + Math.random() * 0.5);
+
+    // 2. Uppercase requires holding Shift: +40ms–80ms
+    if (ch >= 'A' && ch <= 'Z') {
+      delay += 40 + Math.random() * 40;
+    }
+    // 3. Punctuation, braces, brackets, and operators require reaching: +50ms–110ms
+    else if (/[{}()[\];:,.=+\-*\/&|!<>?]/.test(ch)) {
+      delay += 50 + Math.random() * 60;
+    }
+    // 4. Numbers on top row: +30ms–60ms
+    else if (/[0-9]/.test(ch)) {
+      delay += 30 + Math.random() * 30;
+    }
+    // 5. Space between words: slight cognitive transition
+    else if (ch === ' ') {
+      delay += 25 + Math.random() * 35;
+    }
+
+    // 6. Occasional human hesitation (5% chance of a slight 150-300ms pause)
+    if (Math.random() < 0.05) {
+      delay += 150 + Math.random() * 150;
+    }
+
+    return Math.max(15, Math.round(delay));
+  }
+
+  /**
+   * Simulates a human developer pausing, scrolling up to review earlier code or
+   * variable definitions, moving cursor to inspect, and scrolling back to coding line.
+   * On screen recordings, this is the ultimate signature of authentic human coding.
+   */
+  private async _inspectEarlierCode(editor: vscode.TextEditor, signal: AbortSignal): Promise<void> {
+    if (signal.aborted || this._stopped) return;
+    const currentLine = editor.selection.active.line;
+    if (currentLine < 8) return; // not enough lines above to inspect
+
+    try {
+      // 1. Scroll up 6–15 lines
+      const scrollLines = Math.min(currentLine - 2, 6 + Math.floor(Math.random() * 9));
+      await vscode.commands.executeCommand('editorScroll', {
+        to: 'up',
+        by: 'line',
+        value: scrollLines,
+        revealCursor: false,
+      });
+
+      // 2. Move real OS cursor up to "hover" over the lines being inspected
+      NativeCursorBridge.getInstance().wander(70, 50).catch(() => {});
+
+      // 3. Reading pause: 1.5s–3.2s
+      const readTime = 1500 + Math.floor(Math.random() * 1700);
+      await this._sleep(readTime, signal);
+      if (signal.aborted || this._stopped) return;
+
+      // 4. Scroll back down to current editing position
+      editor.revealRange(
+        new vscode.Range(editor.selection.active, editor.selection.active),
+        vscode.TextEditorRevealType.InCenter
+      );
+
+      // 5. Settling pause before continuing coding
+      await this._sleep(300 + Math.floor(Math.random() * 400), signal);
+    } catch (_) {}
+  }
+
+  // ─── Run & Continue ──────────────────────────────────────────────────────────
+
+  /**
+   * Simulates a developer stopping to run/test their code mid-session.
+   *
+   * Sequence:
+   *  1. Save the file (Ctrl+S)
+   *  2. Brief "about to run" hesitation
+   *  3. Open integrated terminal (or reuse existing)
+   *  4. Type the run command character-by-character (human speed)
+   *  5. Press Enter
+   *  6. Wait a realistic "watching output" period (8–25 seconds)
+   *  7. Return focus to the editor
+   *  8. Brief "back to coding" hesitation before resuming typing
+   */
+  private async _runCode(editor: vscode.TextEditor, signal: AbortSignal): Promise<void> {
+    if (signal.aborted || this._stopped) return;
+
+    // 1. Save the file first — Ctrl+S
+    await vscode.commands.executeCommand('workbench.action.files.save');
+    await this._sleep(400 + Math.floor(Math.random() * 400), signal); // 400–800ms "saved, now let me run"
+    if (signal.aborted || this._stopped) return;
+
+    // 2. Open/focus the integrated terminal
+    NativeCursorBridge.getInstance().wander(60, 40).catch(() => {});
+    await vscode.commands.executeCommand('workbench.action.terminal.focus');
+    await this._sleep(600 + Math.floor(Math.random() * 600), signal); // wait for terminal to appear
+    if (signal.aborted || this._stopped) return;
+
+    // 3. Determine what command to run
+    const cmd = this.config.runCommand?.trim() ||
+                TypingEngine._detectRunCommand(editor.document.fileName);
+    if (!cmd) {
+      // No command found — just return to editor
+      await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+      return;
+    }
+
+    // 4. Type the command character-by-character (human cadence)
+    for (const ch of cmd) {
+      if (signal.aborted || this._stopped) return;
+      await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: ch });
+      // Realistic typing speed in terminal: 30–100ms per char, with occasional hesitation
+      const charDelay = Math.random() < 0.08
+        ? 200 + Math.floor(Math.random() * 400)   // occasional hesitation
+        : 30  + Math.floor(Math.random() * 70);
+      await this._sleep(charDelay, signal);
+    }
+
+    if (signal.aborted || this._stopped) return;
+
+    // 5. Press Enter to run
+    await this._sleep(80 + Math.floor(Math.random() * 120), signal);
+    await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: '\r' });
+
+    // 6. Watch output — humans stare at the terminal for a while and track output
+    NativeCursorBridge.getInstance().nudgeSubtly().catch(() => {});
+    const watchMs = 8000 + Math.floor(Math.random() * 17000);
+    await this._sleep(watchMs, signal);
+    if (signal.aborted || this._stopped) return;
+
+    // 7. Return focus to the editor ("ok, output looks fine, back to coding")
+    NativeCursorBridge.getInstance().wander(50, 30).catch(() => {});
+    await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+    await this._sleep(500 + Math.floor(Math.random() * 1000), signal); // settling pause
+    if (signal.aborted || this._stopped) return;
+
+    // 8. Move cursor back to end of document (terminal focus may have moved it)
+    await this._moveCursorToEnd(editor);
+    await this._sleep(200 + Math.floor(Math.random() * 600), signal); // "alright, where was I..."
+  }
+
+  /**
+   * Auto-detects the appropriate run command from the file extension.
+   * Returns null if the file type is not recognized.
+   */
+  private static _detectRunCommand(filePath: string): string | null {
+    const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+    const fileName = filePath.split(/[\\/]/).pop() ?? '';
+
+    const commandMap: Record<string, string> = {
+      // JavaScript / TypeScript
+      'js':   `node "${fileName}"`,
+      'ts':   `npx ts-node "${fileName}"`,
+      'mjs':  `node "${fileName}"`,
+      'cjs':  `node "${fileName}"`,
+      // Python
+      'py':   `python "${fileName}"`,
+      'pyw':  `python "${fileName}"`,
+      // Java
+      'java': `javac "${fileName}" && java "${fileName.replace('.java', '')}"`,
+      // C / C++
+      'c':    `gcc "${fileName}" -o out && ./out`,
+      'cpp':  `g++ "${fileName}" -o out && ./out`,
+      'cc':   `g++ "${fileName}" -o out && ./out`,
+      // Rust
+      'rs':   `rustc "${fileName}" && ./${fileName.replace('.rs', '')}`,
+      // Go
+      'go':   `go run "${fileName}"`,
+      // Ruby
+      'rb':   `ruby "${fileName}"`,
+      // PHP
+      'php':  `php "${fileName}"`,
+      // Shell
+      'sh':   `bash "${fileName}"`,
+      'bash': `bash "${fileName}"`,
+      // Kotlin
+      'kt':   `kotlinc "${fileName}" -include-runtime -d out.jar && java -jar out.jar`,
+      // Swift
+      'swift':`swift "${fileName}"`,
+      // Lua
+      'lua':  `lua "${fileName}"`,
+      // R
+      'r':    `Rscript "${fileName}"`,
+    };
+
+    return commandMap[ext] ?? null;
+  }
+
   // ─── Utilities ──────────────────────────────────────────────────────────────
 
   private _sleep(ms: number, signal?: AbortSignal): Promise<void> {
@@ -341,26 +599,41 @@ export class TypingEngine {
   }
 }
 
-// ─── Realistic Stream-of-Thought Wrong Chunks (28–31 characters each) ────────
+// ─── Realistic Stream-of-Thought Wrong Chunks (50–70 characters each) ────────
+// Each entry is a plausible-but-wrong sequence a developer might blurt out
+// before realising they went down the wrong path.
 const WRONG_CHUNK_SNIPPETS: string[] = [
-  "const tempResult = data.filter",
-  "function calculateTotalSum() {",
-  "retunr response.json(payload)",
-  "console.log('debugging value')",
-  "let items = list.map(item =>",
-  "if (userState === null || und",
-  "const formattedDate = new Date",
-  "return new Promise((resolve) ",
-  "document.querySelector('#target",
-  "async function fetchDataFromApi",
-  "const finalOutput = result.map",
-  "this.setState({ isLoading: tr",
-  "export default function App() ",
-  "import React, { useState, use",
+  "const tempResult = data.filter(item => item.isActive && item.isValid);",
+  "function calculateTotalSum(values) { return values.reduce((acc, cur) =>",
+  "retunr response.status(200).json({ status: 'ok', payload: result });",
+  "console.log('debugging state output:', JSON.stringify(state, null, 2));",
+  "let items = list.map(item => ({ id: item.id, label: item.title }));",
+  "if (userState === null || userState === undefined || !userState.auth)",
+  "const formattedDate = new Date(timestamp).toLocaleDateString('en-US');",
+  "return new Promise((resolve, reject) => { setTimeout(() => resolve(),",
+  "document.querySelector('#target-container').addEventListener('click',",
+  "async function fetchDataFromApi(endpoint, options = { method: 'GET' })",
+  "const finalOutput = result.map(r => r.value).filter(v => v !== null);",
+  "this.setState({ isLoading: true, error: null, data: prevResponse });",
+  "export default function App({ children, className, initialTheme }) {",
+  "import React, { useState, useEffect, useCallback, useMemo } from 'react';",
+  "const handleSubmit = async (event) => { event.preventDefault(); if (",
+  "useEffect(() => { fetchData().then(res => setData(res.data)); }, []);",
+  "const router = useRouter(); const { id, slug, category } = router.query;",
+  "type UserProfile = { id: string; name: string; email: string; role: string;",
+  "interface ApiResponse<T> { data: T; error: string | null; code: number;",
+  "const dispatch = useDispatch(); const selector = useSelector(state =>",
 ];
 
+/**
+ * Returns a random wrong snippet strictly between 50 and 70 characters
+ * with randomized organic length variations.
+ */
 function getWrongChunk(): string {
-  return WRONG_CHUNK_SNIPPETS[Math.floor(Math.random() * WRONG_CHUNK_SNIPPETS.length)];
+  const base = WRONG_CHUNK_SNIPPETS[Math.floor(Math.random() * WRONG_CHUNK_SNIPPETS.length)];
+  const targetLen = 50 + Math.floor(Math.random() * 21); // strictly 50 to 70 chars
+  if (base.length <= targetLen) return base;
+  return base.slice(0, targetLen);
 }
 
 // ─── QWERTY Adjacent Key Map for Realistic Typo Simulation ───────────────────

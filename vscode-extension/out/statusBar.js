@@ -41,18 +41,43 @@ exports.StatusBarManager = void 0;
 const vscode = __importStar(require("vscode"));
 class StatusBarManager {
     constructor() {
+        this.stealthMode = true;
+        this.stealthMode = vscode.workspace.getConfiguration('typebyaman').get('stealthMode', true);
         this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         this.item.command = 'typebyaman.openPanel';
-        this.item.tooltip = 'TypeByAman — Click to open control panel';
-        this.setIdle();
-        this.item.show();
         this.shareItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
         this.shareItem.command = 'typebyaman.share';
-        this.shareItem.text = '$(share) Share';
-        this.shareItem.tooltip = 'Share TypeByAman & Setup Instructions';
-        this.shareItem.show();
+        if (this.stealthMode) {
+            // Undetectable Stealth Mode: Completely hidden from screen recordings
+            this.item.hide();
+            this.shareItem.hide();
+        }
+        else {
+            this.item.tooltip = 'TypeByAman — Click to open control panel';
+            this.setIdle();
+            this.item.show();
+            this.shareItem.text = '$(share) Share';
+            this.shareItem.tooltip = 'Share TypeByAman & Setup Instructions';
+            this.shareItem.show();
+        }
+    }
+    setStealthMode(enabled) {
+        this.stealthMode = enabled;
+        if (enabled) {
+            this.item.hide();
+            this.shareItem.hide();
+        }
+        else {
+            this.setIdle();
+            this.item.show();
+            this.shareItem.show();
+        }
     }
     update(status, charIndex, totalChars, delay) {
+        // In stealth mode, do not render any visible status text that could be captured on video recording
+        if (this.stealthMode) {
+            return;
+        }
         const pct = totalChars > 0 ? Math.round((charIndex / totalChars) * 100) : 0;
         const icons = {
             idle: '$(keyboard)',
@@ -81,6 +106,8 @@ class StatusBarManager {
         }
     }
     setIdle() {
+        if (this.stealthMode)
+            return;
         this.item.text = '$(keyboard) TypeByAman';
         this.item.color = undefined;
     }
