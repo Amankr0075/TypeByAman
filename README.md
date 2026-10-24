@@ -93,6 +93,19 @@ When software is recording the entire screen and tracking mouse/keyboard activit
 - In VS Code, the status bar text and indicators are completely hidden (`typebyaman.stealthMode`), ensuring no extension names or counters appear on video recordings.
 - In Chrome, no DOM overlays, watermarks, or badges are injected into the page.
 
+### 7. Autonomous Human Design Mode (Canva, Adobe, Figma, Photoshop Web)
+- **100% Single-Pointer Lock (No Duplicate Cursors)**: Automatically hides the browser's native cursor across the document (`cursor: none !important;`) and renders a single, authentic OS-style vector mouse pointer. If the user moves their physical mouse, the virtual pointer moves in lockstep. Screen recording and monitoring software see **exactly one mouse pointer** at all times.
+- **Realistic Mouse Clicks & Visual Feedback**: Every click depresses the virtual cursor and triggers a smooth expanding ripple halo (azure on single clicks, dual purple on double clicks, and a persistent glowing halo during element drags).
+- **Rich Human Design Operations**:
+  - 🎨 **Changing Colors**: Selects elements, opens color pickers and swatches, hovers over harmonious palette choices, applies new fills, and adjusts hue/opacity.
+  - ✍️ **Editing Texts**: Double-clicks text boxes, selects existing text (`Ctrl+A`), types modern design headlines and slogans with natural keystroke timing, realistic typos, backspace self-correction, and styling (`Ctrl+B`/`Ctrl+I`).
+  - 🖼️ **Changing Backgrounds**: Selects the artboard boundary, opens background palettes, browses presets/gradients, and evaluates canvas contrast.
+  - 📐 **Adding Shapes & Graphics**: Navigates to sidebar elements, drags shapes onto the canvas with visible drag halos, and nudges them into position.
+  - 🔄 **Rotating Elements**: Grabs rotation handles and performs circular arc drags (15°–35°) with micro-pauses to inspect balance.
+  - ⏪ **Undo/Redo Exploration**: Makes test adjustments, pauses to think, undoes with `Ctrl+Z`, and optionally redoes or tests alternative placements.
+  - 🔍 **Zoom & Detail Inspection**: Zooms in (`Ctrl++`), pans across canvas details with spacebar drags, and resets zoom (`Ctrl+0`).
+  - ⏱️ **1-Hour Continuous Autonomous Workflow**: Runs unattended step-by-step for up to 1 hour with variable cognitive pauses (micro, short, medium, long, idle).
+
 ---
 
 ## 🗂️ Project Structure
