@@ -31,6 +31,13 @@
 'use strict';
 
 const readline = require('readline');
+const http = require('http');
+let WebSocketServer;
+try {
+  WebSocketServer = require('ws').WebSocketServer;
+} catch (_) {}
+
+const PORT = parseInt(process.env.TBA_NATIVE_PORT || '9876', 10);
 
 // ─── Load nut-js ─────────────────────────────────────────────────────────────
 
@@ -261,14 +268,134 @@ function sleep(ms) {
 
 // ─── JSON-RPC stdin/stdout Protocol ──────────────────────────────────────────
 
+// ─── Command Dispatcher ───────────────────────────────────────────────────────
+
+async function dispatchCommand(cmd, msg = {}) {
+  let result = null;
+  switch (cmd) {
+    case 'ping':
+      result = { pong: true };
+      break;
+
+    case 'getPos': {
+      const pos = await mouse.getPosition();
+      result = { x: pos.x, y: pos.y };
+      break;
+    }
+
+    case 'moveTo':
+      await moveTo(msg.x, msg.y, msg.duration);
+      break;
+
+    case 'click':
+      await click(msg.x, msg.y, msg.button ?? 'left');
+      break;
+
+    case 'doubleClick':
+      await doubleClick(msg.x, msg.y);
+      break;
+
+    case 'drag':
+      await drag(msg.fromX, msg.fromY, msg.toX, msg.toY, msg.duration);
+      break;
+
+    case 'scroll':
+      await scroll(msg.x, msg.y, msg.amount ?? -3);
+      break;
+
+    case 'keyTap':
+      await keyTap(msg.key, msg.modifiers ?? []);
+      break;
+
+    case 'typeString':
+      await typeString(msg.text ?? '', msg.delay ?? 60);
+      break;
+
+    default:
+      throw new Error(`Unknown command: ${cmd}`);
+  }
+  return result;
+}
+
+// ─── HTTP & WebSocket Server ─────────────────────────────────────────────────
+
+function startServer() {
+  const server = http.createServer(async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET' && (req.url === '/ping' || req.url === '/status')) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ready: true, version: '1.0.0' }));
+      return;
+    }
+
+    if (req.method === 'POST' && (req.url === '/rpc' || req.url === '/')) {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const msg = JSON.parse(body);
+          const result = await dispatchCommand(msg.cmd, msg);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, id: msg.id, ...(result ?? {}) }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: err.message, id: msg?.id }));
+        }
+      });
+      return;
+    }
+
+    res.writeHead(404);
+    res.end();
+  });
+
+  if (WebSocketServer) {
+    const wss = new WebSocketServer({ server });
+    wss.on('connection', ws => {
+      ws.on('message', async data => {
+        let msg;
+        try {
+          msg = JSON.parse(data.toString());
+          const result = await dispatchCommand(msg.cmd, msg);
+          ws.send(JSON.stringify({ ok: true, id: msg.id, ...(result ?? {}) }));
+        } catch (err) {
+          ws.send(JSON.stringify({ ok: false, error: err.message, id: msg?.id }));
+        }
+      });
+    });
+  }
+
+  server.listen(PORT, '127.0.0.1', () => {
+    process.stderr.write(`[TBA NativeHelper] HTTP/WebSocket server listening on http://127.0.0.1:${PORT}\n`);
+  });
+
+  server.on('error', err => {
+    process.stderr.write(`[TBA NativeHelper] Server port error: ${err.message}\n`);
+  });
+}
+
+// ─── JSON-RPC stdin/stdout Protocol ──────────────────────────────────────────
+
 async function main() {
   const ready = await loadNutJs();
   if (!ready) {
-    process.stdout.write(JSON.stringify({ ok: false, error: '@nut-tree/nut-js not installed. Run: npm install' }) + '\n');
+    process.stdout.write(JSON.stringify({ ok: false, error: '@nut-tree-fork/nut-js not installed. Run: npm install' }) + '\n');
     process.exit(1);
   }
 
-  // Signal ready
+  // Start HTTP and WebSocket listener for browser extension
+  startServer();
+
+  // Signal ready to stdout for VS Code child process
   process.stdout.write(JSON.stringify({ ok: true, ready: true, version: '1.0.0' }) + '\n');
 
   const rl = readline.createInterface({ input: process.stdin });
@@ -286,53 +413,8 @@ async function main() {
     const cmd = msg.cmd;
 
     try {
-      let result = null;
-
-      switch (cmd) {
-        case 'ping':
-          result = { pong: true };
-          break;
-
-        case 'getPos': {
-          const pos = await mouse.getPosition();
-          result = { x: pos.x, y: pos.y };
-          break;
-        }
-
-        case 'moveTo':
-          await moveTo(msg.x, msg.y, msg.duration);
-          break;
-
-        case 'click':
-          await click(msg.x, msg.y, msg.button ?? 'left');
-          break;
-
-        case 'doubleClick':
-          await doubleClick(msg.x, msg.y);
-          break;
-
-        case 'drag':
-          await drag(msg.fromX, msg.fromY, msg.toX, msg.toY, msg.duration);
-          break;
-
-        case 'scroll':
-          await scroll(msg.x, msg.y, msg.amount ?? -3);
-          break;
-
-        case 'keyTap':
-          await keyTap(msg.key, msg.modifiers ?? []);
-          break;
-
-        case 'typeString':
-          await typeString(msg.text ?? '', msg.delay ?? 60);
-          break;
-
-        default:
-          throw new Error(`Unknown command: ${cmd}`);
-      }
-
+      const result = await dispatchCommand(cmd, msg);
       process.stdout.write(JSON.stringify({ ok: true, id, ...(result ?? {}) }) + '\n');
-
     } catch (err) {
       process.stdout.write(JSON.stringify({ ok: false, error: err.message, id }) + '\n');
     }

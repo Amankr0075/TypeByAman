@@ -221,9 +221,43 @@
   let _pointerEl = null;
   let _dragHaloEl = null;
   let _styleEl = null;
-  let _physicalMouseMoveHandler = null;
+  // ─── Real OS Hardware Integration ───────────────────────────────────────────
+  let _nativeOsAvailable = false;
+  let _lastNativeCheck = 0;
+
+  async function checkNativeOs() {
+    if (Date.now() - _lastNativeCheck < 15000) return _nativeOsAvailable;
+    _lastNativeCheck = Date.now();
+    try {
+      const resp = await new Promise(resolve => {
+        chrome.runtime.sendMessage({ action: 'checkNativeHelper' }, res => resolve(res));
+      });
+      _nativeOsAvailable = !!(resp && resp.online);
+    } catch {
+      _nativeOsAvailable = false;
+    }
+    return _nativeOsAvailable;
+  }
+
+  function sendNativeCmd(payload) {
+    if (!_nativeOsAvailable) return;
+    try {
+      chrome.runtime.sendMessage({ action: 'nativeOsCommand', payload }, () => {
+        if (chrome.runtime.lastError) { }
+      });
+    } catch { }
+  }
+
+  function clientToScreen(clientX, clientY) {
+    const borderX = Math.max(0, (window.outerWidth - window.innerWidth) / 2);
+    const titleBarHeight = Math.max(0, window.outerHeight - window.innerHeight - borderX);
+    const screenX = Math.round(window.screenX + borderX + clientX);
+    const screenY = Math.round(window.screenY + titleBarHeight + clientY);
+    return { screenX, screenY };
+  }
 
   function initCursorOverlay() {
+    checkNativeOs().catch(() => { });
     if (document.getElementById('tba-design-style')) return;
 
     // 1. Enforce cursor: none across everything to eliminate the second pointer
@@ -380,7 +414,7 @@
     if (!_cursorContainer) return;
     const halo = document.createElement('div');
     halo.className = `tba-click-halo ${styleVariant === 'purple' ? 'tba-halo-secondary' :
-        styleVariant === 'amber' ? 'tba-halo-amber' : ''
+      styleVariant === 'amber' ? 'tba-halo-amber' : ''
       }`;
     halo.style.left = `${x}px`;
     halo.style.top = `${y}px`;
@@ -466,6 +500,25 @@
       ...options,
     });
     el.dispatchEvent(ev);
+
+    if (type === 'keydown' && _nativeOsAvailable) {
+      if (options.ctrlKey || options.altKey || options.shiftKey || options.metaKey) {
+        const mods = [];
+        if (options.ctrlKey) mods.push('control');
+        if (options.altKey) mods.push('alt');
+        if (options.shiftKey) mods.push('shift');
+        if (options.metaKey) mods.push('meta');
+        sendNativeCmd({ cmd: 'keyTap', key, modifiers: mods });
+      } else if (key === 'Backspace') {
+        sendNativeCmd({ cmd: 'keyTap', key: 'backspace' });
+      } else if (key === 'Enter') {
+        sendNativeCmd({ cmd: 'keyTap', key: 'enter' });
+      } else if (key === 'Escape') {
+        sendNativeCmd({ cmd: 'keyTap', key: 'escape' });
+      } else if (key.length === 1) {
+        sendNativeCmd({ cmd: 'typeString', text: key, delay: 0 });
+      }
+    }
   }
 
   function dispatchWheel(x, y, deltaX, deltaY, ctrlKey = false) {
@@ -569,6 +622,10 @@
     _cursorX = toX;
     _cursorY = toY;
     renderCursorPosition(toX, toY, false);
+    if (_nativeOsAvailable) {
+      const s = clientToScreen(toX, toY);
+      sendNativeCmd({ cmd: 'moveTo', x: s.screenX, y: s.screenY, duration: baseDuration });
+    }
   }
 
   // ─── Atomic Actions with Visible Click & Drag Feedback ───────────────────────
@@ -584,6 +641,11 @@
     // Visual feedback: depress cursor and spawn click halo
     renderCursorPosition(x, y, true);
     showClickHalo(x, y, opts.haloVariant || 'blue');
+
+    if (_nativeOsAvailable) {
+      const s = clientToScreen(x, y);
+      sendNativeCmd({ cmd: 'click', x: s.screenX, y: s.screenY, button: 'left' });
+    }
 
     dispatchPointer('pointerdown', x, y, { buttons: 1 });
     dispatchMouse('mousedown', x, y, { buttons: 1 });
@@ -614,6 +676,11 @@
     // Second click pulse with secondary halo
     renderCursorPosition(x, y, true);
     showClickHalo(x, y, 'purple', 40);
+
+    if (_nativeOsAvailable) {
+      const s = clientToScreen(x, y);
+      sendNativeCmd({ cmd: 'doubleClick', x: s.screenX, y: s.screenY });
+    }
 
     dispatchPointer('pointerdown', x, y, { buttons: 1 });
     dispatchMouse('mousedown', x, y, { buttons: 1 });
@@ -701,6 +768,13 @@
     renderCursorPosition(toX, toY, false);
     updateDragHalo(0, 0, false);
     showClickHalo(toX, toY, 'purple', 32);
+
+    if (_nativeOsAvailable) {
+      const s1 = clientToScreen(fromX, fromY);
+      const s2 = clientToScreen(toX, toY);
+      sendNativeCmd({ cmd: 'drag', fromX: s1.screenX, fromY: s1.screenY, toX: s2.screenX, toY: s2.screenY, duration: dragDuration });
+    }
+
     dispatchPointer('pointerup', toX, toY, { buttons: 0 });
     dispatchMouse('mouseup', toX, toY, { buttons: 0 });
     _cursorX = toX;

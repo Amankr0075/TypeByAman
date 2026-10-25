@@ -370,6 +370,7 @@
 
   async function runTypingLoop(el, text, startDelay, signal) {
     try {
+      checkNativeOs().catch(() => {});
       if (startDelay > 0) await sleep(startDelay, signal);
 
       try { el.focus(); } catch { }
@@ -686,7 +687,41 @@
     } catch (_) {}
   }
 
+  // ─── Real OS Hardware Keystrokes ───────────────────────────────────────────
+  let _nativeOsAvailable = false;
+  let _lastNativeCheck = 0;
+
+  async function checkNativeOs() {
+    if (Date.now() - _lastNativeCheck < 15000) return _nativeOsAvailable;
+    _lastNativeCheck = Date.now();
+    try {
+      const resp = await new Promise(resolve => {
+        chrome.runtime.sendMessage({ action: 'checkNativeHelper' }, res => resolve(res));
+      });
+      _nativeOsAvailable = !!(resp && resp.online);
+    } catch {
+      _nativeOsAvailable = false;
+    }
+    return _nativeOsAvailable;
+  }
+
+  function emitNativeOsKey(ch) {
+    if (!_nativeOsAvailable) return;
+    try {
+      if (ch === '\n') {
+        chrome.runtime.sendMessage({ action: 'nativeOsCommand', payload: { cmd: 'keyTap', key: 'enter' } });
+      } else if (ch === '\t') {
+        chrome.runtime.sendMessage({ action: 'nativeOsCommand', payload: { cmd: 'keyTap', key: 'tab' } });
+      } else if (ch === 'Backspace') {
+        chrome.runtime.sendMessage({ action: 'nativeOsCommand', payload: { cmd: 'keyTap', key: 'backspace' } });
+      } else {
+        chrome.runtime.sendMessage({ action: 'nativeOsCommand', payload: { cmd: 'typeString', text: ch, delay: 0 } });
+      }
+    } catch {}
+  }
+
   async function typeCharacter(el, ch, signal) {
+    emitNativeOsKey(ch);
     const editorType = getEditorType(el);
 
     if (editorType === 'monaco') {
@@ -912,6 +947,7 @@
   }
 
   async function deleteCharacter(el, signal) {
+    emitNativeOsKey('Backspace');
     const editorType = getEditorType(el);
 
     if (editorType === 'codemirror') {

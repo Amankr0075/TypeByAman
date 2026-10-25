@@ -113,6 +113,36 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
   }
 
+  if (msg.action === 'nativeOsCommand') {
+    (async () => {
+      try {
+        const resp = await fetch('http://127.0.0.1:9876/rpc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(msg.payload || {}),
+        });
+        const data = await resp.json();
+        sendResponse(data);
+      } catch (err) {
+        sendResponse({ ok: false, error: 'Native helper offline' });
+      }
+    })();
+    return true;
+  }
+
+  if (msg.action === 'checkNativeHelper') {
+    (async () => {
+      try {
+        const resp = await fetch('http://127.0.0.1:9876/ping', { method: 'GET' });
+        const data = await resp.json();
+        sendResponse({ online: data.ok === true });
+      } catch {
+        sendResponse({ online: false });
+      }
+    })();
+    return true;
+  }
+
   // Relay status/typing events and Design Mode events from content → popup & mobile remote
   const RELAY_ACTIONS = ['statusUpdate', 'targetPicked', 'typingDone', 'typingError', 'designStatus'];
   if (RELAY_ACTIONS.includes(msg.action)) {
@@ -130,4 +160,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   sendResponse({ relayed: true });
   return false;
 });
+
 

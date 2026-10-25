@@ -344,27 +344,38 @@ export class TypingEngine {
   ): Promise<void> {
     if (signal.aborted) return;
 
-    await editor.edit(editBuilder => {
-      const position = editor.selection.active;
-      editBuilder.insert(position, ch);
-    }, {
-      undoStopBefore: false,
-      undoStopAfter: false,
-    });
+    const bridge = NativeCursorBridge.getInstance();
+    if (bridge.isReady) {
+      if (ch === '\n') {
+        await bridge.keyTap('enter');
+      } else if (ch === '\t') {
+        await bridge.keyTap('tab');
+      } else {
+        await bridge.typeString(ch, 0);
+      }
+    } else {
+      await editor.edit(editBuilder => {
+        const position = editor.selection.active;
+        editBuilder.insert(position, ch);
+      }, {
+        undoStopBefore: false,
+        undoStopAfter: false,
+      });
 
-    // Move cursor forward
-    const doc = editor.document;
-    const pos = editor.selection.active;
-    const newPos = doc.validatePosition(
-      new vscode.Position(pos.line, pos.character)
-    );
-    editor.selection = new vscode.Selection(newPos, newPos);
+      // Move cursor forward
+      const doc = editor.document;
+      const pos = editor.selection.active;
+      const newPos = doc.validatePosition(
+        new vscode.Position(pos.line, pos.character)
+      );
+      editor.selection = new vscode.Selection(newPos, newPos);
 
-    // Auto-reveal cursor
-    editor.revealRange(
-      new vscode.Range(newPos, newPos),
-      vscode.TextEditorRevealType.Default
-    );
+      // Auto-reveal cursor
+      editor.revealRange(
+        new vscode.Range(newPos, newPos),
+        vscode.TextEditorRevealType.Default
+      );
+    }
   }
 
   private async _moveCursorToEnd(editor: vscode.TextEditor): Promise<void> {
@@ -378,29 +389,34 @@ export class TypingEngine {
 
   private async _deleteChar(editor: vscode.TextEditor, signal: AbortSignal): Promise<void> {
     if (signal.aborted) return;
-    const pos = editor.selection.active;
-    if (pos.character > 0) {
-      const prevPos = new vscode.Position(pos.line, pos.character - 1);
-      const range = new vscode.Range(prevPos, pos);
-      await editor.edit(editBuilder => {
-        editBuilder.delete(range);
-      }, {
-        undoStopBefore: false,
-        undoStopAfter: false,
-      });
-      editor.selection = new vscode.Selection(prevPos, prevPos);
-    } else if (pos.line > 0) {
-      const prevLine = pos.line - 1;
-      const prevChar = editor.document.lineAt(prevLine).text.length;
-      const prevPos = new vscode.Position(prevLine, prevChar);
-      const range = new vscode.Range(prevPos, pos);
-      await editor.edit(editBuilder => {
-        editBuilder.delete(range);
-      }, {
-        undoStopBefore: false,
-        undoStopAfter: false,
-      });
-      editor.selection = new vscode.Selection(prevPos, prevPos);
+    const bridge = NativeCursorBridge.getInstance();
+    if (bridge.isReady) {
+      await bridge.keyTap('backspace');
+    } else {
+      const pos = editor.selection.active;
+      if (pos.character > 0) {
+        const prevPos = new vscode.Position(pos.line, pos.character - 1);
+        const range = new vscode.Range(prevPos, pos);
+        await editor.edit(editBuilder => {
+          editBuilder.delete(range);
+        }, {
+          undoStopBefore: false,
+          undoStopAfter: false,
+        });
+        editor.selection = new vscode.Selection(prevPos, prevPos);
+      } else if (pos.line > 0) {
+        const prevLine = pos.line - 1;
+        const prevChar = editor.document.lineAt(prevLine).text.length;
+        const prevPos = new vscode.Position(prevLine, prevChar);
+        const range = new vscode.Range(prevPos, pos);
+        await editor.edit(editBuilder => {
+          editBuilder.delete(range);
+        }, {
+          undoStopBefore: false,
+          undoStopAfter: false,
+        });
+        editor.selection = new vscode.Selection(prevPos, prevPos);
+      }
     }
   }
 

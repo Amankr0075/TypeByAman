@@ -8,7 +8,8 @@
     "install-deps": "npm install @nut-tree/nut-js"
   },
   "dependencies": {
-    "@nut-tree-fork/nut-js": "^4.2.0"
+    "@nut-tree-fork/nut-js": "^4.2.0",
+    "ws": "^8.22.0"
   },
   "author": "Aman Kumar",
   "license": "MIT"
