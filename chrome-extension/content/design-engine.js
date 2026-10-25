@@ -281,6 +281,30 @@
     return { screenX, screenY };
   }
 
+  /**
+   * AI Creative Copy Engine (Groq / Llama 3)
+   * Fetches real-time AI headlines, quotes, CTAs, and creative copy.
+   * If offline or no API key, seamlessly falls back to the curated designer dictionary.
+   */
+  async function getCreativeCopy(category, fallbackList) {
+    try {
+      const resp = await new Promise((resolve) => {
+        const timer = setTimeout(() => resolve(null), 3500);
+        chrome.runtime.sendMessage(
+          { action: 'getAiCreativeCopy', category, platform: designState.platform },
+          (response) => {
+            clearTimeout(timer);
+            resolve(response);
+          }
+        );
+      });
+      if (resp && resp.ok && resp.text && typeof resp.text === 'string' && resp.text.trim().length > 0) {
+        return resp.text.trim();
+      }
+    } catch (_) { }
+    return pick(fallbackList || ['CREATIVE EXCELLENCE']);
+  }
+
   function initCursorOverlay() {
     checkNativeOs().catch(() => { });
     if (document.getElementById('tba-design-style')) return;
@@ -316,7 +340,6 @@
         pointer-events: none !important;
         transform-origin: 0 0 !important;
         transform: translate3d(50vw, 50vh, 0) scale(1);
-        transition: transform 0.04s cubic-bezier(0, 0, 0.2, 1);
         will-change: transform;
         filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
       }
@@ -384,13 +407,12 @@
     (document.head || document.documentElement).appendChild(_styleEl);
     document.documentElement.classList.add('tba-design-active');
 
-    // 2. Inject single virtual cursor container
+    // 2. Inject single virtual cursor container strictly into documentElement
     _cursorContainer = document.createElement('div');
     _cursorContainer.id = 'tba-cursor-container';
 
     _pointerEl = document.createElement('div');
     _pointerEl.className = 'tba-virtual-pointer';
-    // Authentic OS arrow with tip hot-spot strictly at (0, 0)
     _pointerEl.innerHTML = `
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M0 0L0 17.5L4.5 13.5L8.5 21.5L11.5 20L7.5 12.2L13.5 12L0 0Z" fill="#0f172a" stroke="#000000" stroke-width="0.8" stroke-linejoin="round"/>
@@ -398,12 +420,13 @@
       </svg>
     `;
     _cursorContainer.appendChild(_pointerEl);
-    (document.body || document.documentElement).appendChild(_cursorContainer);
+    document.documentElement.appendChild(_cursorContainer);
 
     renderCursorPosition(_cursorX, _cursorY, false);
 
-    // 3. Keep single-cursor in sync if user moves physical mouse
+    // 3. Keep single-cursor in sync ONLY if user physically moves their real mouse
     _physicalMouseMoveHandler = (e) => {
+      if (!e.isTrusted) return; // Ignore synthetic mousemove events
       _cursorX = e.clientX;
       _cursorY = e.clientY;
       renderCursorPosition(_cursorX, _cursorY, false);
@@ -994,7 +1017,9 @@
       'Read Full Case Study',
     ];
 
-    const sample = pick(designTexts);
+    const copyCat = pick(['headline', 'quote', 'cta', 'subheading']);
+    const sample = await getCreativeCopy(copyCat, designTexts);
+    if (signal.aborted) return;
     const charsToType = rand(Math.min(5, sample.length), sample.length);
 
     // Realistic variable typing cadence: alternate fast burst words and deliberate words
@@ -1532,7 +1557,7 @@
       'INNOVATION IN EVERY PIXEL',
       'BEYOND BOUNDARIES 2026',
     ];
-    const headline = pick(heroHeadlines);
+    const headline = await getCreativeCopy('headline', heroHeadlines);
     await typeDesignText(headline, signal);
     if (signal.aborted) return;
 
@@ -1558,7 +1583,8 @@
     await pressShortcut('t', {}, signal);
     await sleep(rand(100, 200), signal);
     await clickAt(btnX + btnW / 2, btnY + btnH / 2, signal, { focus: true });
-    await typeDesignText('Explore Now →', signal);
+    const heroCta = await getCreativeCopy('cta', ['Explore Now →', 'Get Started →', 'Discover More →']);
+    await typeDesignText(heroCta, signal);
 
     // Step F: If an HTML5 canvas is present, physically render the design
     drawOnCanvasIfPresent((ctx, rect, sx, sy) => {
@@ -1628,7 +1654,7 @@
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold ${Math.round(12 * sx)}px -apple-system, BlinkMacSystemFont, sans-serif`;
-      ctx.fillText('Explore Now →', bRelX + bRelW / 2, bRelY + bRelH / 2);
+      ctx.fillText(heroCta, bRelX + bRelW / 2, bRelY + bRelH / 2);
     });
 
     // Designer step back to admire composition
@@ -1679,7 +1705,7 @@
       'Download Portfolio',
       'Join 100K+ Creators',
     ];
-    const label = pick(ctaLabels);
+    const label = await getCreativeCopy('cta', ctaLabels);
     await typeDesignText(label, signal);
     if (signal.aborted) return;
 
@@ -1904,7 +1930,13 @@
         const hc = center(headingBtn);
         await clickAt(hc.x, hc.y, signal, { haloVariant: 'blue' });
         await sleep(rand(400, 800), signal);
-        await typeDesignText(pick(['SUMMER EDITORIAL 2026', 'DESIGN BEYOND BOUNDARIES', 'PREMIUM CRAFTSMANSHIP']), signal);
+        const headingText = await getCreativeCopy('headline', [
+          'SUMMER EDITORIAL 2026',
+          'DESIGN BEYOND BOUNDARIES',
+          'PREMIUM CRAFTSMANSHIP',
+          'INNOVATION IN EVERY PIXEL',
+        ]);
+        await typeDesignText(headingText, signal);
         designState.totalActions += 2;
         return;
       }

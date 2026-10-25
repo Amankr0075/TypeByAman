@@ -34,3 +34,21 @@ dist/
 scratch/
 tmp/
 temp/
+
+# Environment, Secrets & API Keys
+.env
+.env.*
+*.env
+*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+keys.json
+api-keys.json
+secrets.json
+config.local.json
+credentials.json
+*.pem
+*.key
+

@@ -146,6 +146,90 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // ─── AI Creative Copy Engine (Groq Llama 3) ──────────────────────────────────
+  if (msg.action === 'getAiCreativeCopy') {
+    (async () => {
+      try {
+        const settings = await chrome.storage.local.get(['tba_groq_api_key']);
+        const apiKey = (settings.tba_groq_api_key || '').trim();
+        if (!apiKey) {
+          sendResponse({ ok: false, fallback: true });
+          return;
+        }
+
+        const category = msg.category || 'headline';
+        const platform = msg.platform || 'modern graphic design';
+        let prompt = '';
+
+        switch (category) {
+          case 'headline':
+            prompt = `Generate ONE ultra-punchy, high-end graphic design headline for a modern poster, hero banner or editorial layout on ${platform}. 2 to 5 words max. Must be inspiring, modern and bold (e.g. "BEYOND BOUNDARIES", "ELEVATE DIGITAL CRAFT", "THE ARCHITECTURE OF SILENCE"). Output ONLY the headline text in UPPERCASE, no markdown, no quotes.`;
+            break;
+          case 'quote':
+            prompt = `Generate ONE thought-provoking, authentic design quote or creative statement (1 short sentence, max 10-12 words). E.g. "Simplicity is the ultimate sophistication in every dimension." Output ONLY the sentence, no quotation marks, no author name, no extra text.`;
+            break;
+          case 'cta':
+            prompt = `Generate ONE modern, sleek call-to-action button label with an arrow (2 to 3 words, e.g. "Explore Collection →", "Get Started Now →", "View Case Study →"). Output ONLY the button text.`;
+            break;
+          case 'subheading':
+            prompt = `Generate ONE elegant minimalist design subheading for a creative portfolio (max 8 words). Output ONLY the clean text.`;
+            break;
+          default:
+            prompt = `Generate ONE short, creative design phrase (3-6 words) for graphic design. Output ONLY the text.`;
+        }
+
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 3500);
+
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: 'You are an award-winning human graphic designer and creative director. You provide concise, beautiful, modern typography copy.' },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.85,
+            max_tokens: 35,
+          }),
+        });
+        clearTimeout(tid);
+
+        if (!res.ok) {
+          sendResponse({ ok: false, fallback: true });
+          return;
+        }
+
+        const data = await res.json();
+        let text = data.choices?.[0]?.message?.content?.trim() || '';
+        text = text.replace(/^["'`]+|["'`]+$/g, '').trim();
+        sendResponse({ ok: !!text, text });
+      } catch (err) {
+        sendResponse({ ok: false, fallback: true });
+      }
+    })();
+    return true;
+  }
+
+  if (msg.action === 'saveGroqApiKey') {
+    (async () => {
+      const apiKey = (msg.apiKey || '').trim();
+      try {
+        await chrome.storage.local.set({ tba_groq_api_key: apiKey });
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+
   // Relay status/typing events and Design Mode events from content → popup & mobile remote
   const RELAY_ACTIONS = ['statusUpdate', 'targetPicked', 'typingDone', 'typingError', 'designStatus'];
   if (RELAY_ACTIONS.includes(msg.action)) {

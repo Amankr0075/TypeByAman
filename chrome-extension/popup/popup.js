@@ -607,30 +607,30 @@ https://github.com/Amankr0075/TypeByAman`;
 // ─── Design Mode ─────────────────────────────────────────────────────────────
 
 const designUI = {
-  statusBadge:    null,
-  platformValue:  null,
-  elapsed:        null,
-  remaining:      null,
-  pct:            null,
-  fill:           null,
-  glow:           null,
-  progressBar:    null,
-  actions:        null,
-  lastAction:     null,
-  btnStart:       null,
-  btnPause:       null,
-  btnResume:      null,
-  btnStop:        null,
-  durationChips:  null,
+  statusBadge: null,
+  platformValue: null,
+  elapsed: null,
+  remaining: null,
+  pct: null,
+  fill: null,
+  glow: null,
+  progressBar: null,
+  actions: null,
+  lastAction: null,
+  btnStart: null,
+  btnPause: null,
+  btnResume: null,
+  btnStop: null,
+  durationChips: null,
 };
 
-let designSessionDuration    = 3600000; // default 1 hour
-let designCursorSpeed        = 'normal';
-let designOperationSpeed     = 'normal';
-let designTimerInterval      = null;
-let designSessionStart       = null;
-let designPausedAccumulated  = 0;
-let designPauseStart         = null;
+let designSessionDuration = 3600000; // default 1 hour
+let designCursorSpeed = 'normal';
+let designOperationSpeed = 'normal';
+let designTimerInterval = null;
+let designSessionStart = null;
+let designPausedAccumulated = 0;
+let designPauseStart = null;
 
 const CURSOR_SPEED_LABELS = {
   'slow': { val: '0.6x', unit: 'Slow' },
@@ -708,24 +708,24 @@ async function dispatchDesignSpeedUpdate() {
         operationSpeed: designOperationSpeed
       });
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function initDesignUI() {
-  designUI.statusBadge   = document.getElementById('design-status-badge');
+  designUI.statusBadge = document.getElementById('design-status-badge');
   designUI.platformValue = document.getElementById('design-platform-value');
-  designUI.elapsed       = document.getElementById('design-elapsed');
-  designUI.remaining     = document.getElementById('design-remaining');
-  designUI.pct           = document.getElementById('design-pct');
-  designUI.fill          = document.getElementById('design-progress-fill');
-  designUI.glow          = document.getElementById('design-progress-glow');
-  designUI.progressBar   = document.getElementById('design-progress-bar');
-  designUI.actions       = document.getElementById('design-actions');
-  designUI.lastAction    = document.getElementById('design-last-action');
-  designUI.btnStart      = document.getElementById('design-btn-start');
-  designUI.btnPause      = document.getElementById('design-btn-pause');
-  designUI.btnResume     = document.getElementById('design-btn-resume');
-  designUI.btnStop       = document.getElementById('design-btn-stop');
+  designUI.elapsed = document.getElementById('design-elapsed');
+  designUI.remaining = document.getElementById('design-remaining');
+  designUI.pct = document.getElementById('design-pct');
+  designUI.fill = document.getElementById('design-progress-fill');
+  designUI.glow = document.getElementById('design-progress-glow');
+  designUI.progressBar = document.getElementById('design-progress-bar');
+  designUI.actions = document.getElementById('design-actions');
+  designUI.lastAction = document.getElementById('design-last-action');
+  designUI.btnStart = document.getElementById('design-btn-start');
+  designUI.btnPause = document.getElementById('design-btn-pause');
+  designUI.btnResume = document.getElementById('design-btn-resume');
+  designUI.btnStop = document.getElementById('design-btn-stop');
   designUI.durationChips = document.querySelectorAll('.design-duration-chips .delay-chip');
 
   // Load saved speeds from storage
@@ -802,6 +802,54 @@ function initDesignUI() {
   if (designUI.btnPause) designUI.btnPause.addEventListener('click', () => sendDesignCmd('pause'));
   if (designUI.btnResume) designUI.btnResume.addEventListener('click', () => sendDesignCmd('resume'));
   if (designUI.btnStop) designUI.btnStop.addEventListener('click', () => sendDesignCmd('stop'));
+
+  // AI Creative Works Key handling
+  const aiKeyInput = document.getElementById('input-groq-key');
+  const aiSaveBtn = document.getElementById('btn-save-groq-key');
+  const aiStatusPill = document.getElementById('ai-status-pill');
+  const aiFeedback = document.getElementById('ai-feedback');
+
+  function updateAiStatus(hasKey) {
+    if (!aiStatusPill) return;
+    if (hasKey) {
+      aiStatusPill.textContent = 'AI Active';
+      aiStatusPill.className = 'ai-status-pill active';
+    } else {
+      aiStatusPill.textContent = 'Default Library';
+      aiStatusPill.className = 'ai-status-pill offline';
+    }
+  }
+
+  chrome.storage.local.get(['tba_groq_api_key'], (res) => {
+    const key = (res.tba_groq_api_key || '').trim();
+    if (aiKeyInput && key) {
+      aiKeyInput.value = key;
+    }
+    updateAiStatus(Boolean(key));
+  });
+
+  if (aiSaveBtn && aiKeyInput) {
+    aiSaveBtn.addEventListener('click', () => {
+      const val = (aiKeyInput.value || '').trim();
+      chrome.runtime.sendMessage({ action: 'saveGroqApiKey', apiKey: val }, (res) => {
+        if (res && res.ok) {
+          updateAiStatus(Boolean(val));
+          if (aiFeedback) {
+            aiFeedback.textContent = val ? '✓ Groq API Key saved securely!' : '✓ Key cleared. Using built-in dictionary.';
+            aiFeedback.className = 'ai-feedback success';
+            aiFeedback.style.display = 'block';
+            setTimeout(() => { if (aiFeedback) aiFeedback.style.display = 'none'; }, 3000);
+          }
+        } else {
+          if (aiFeedback) {
+            aiFeedback.textContent = 'Failed to save key.';
+            aiFeedback.className = 'ai-feedback error';
+            aiFeedback.style.display = 'block';
+          }
+        }
+      });
+    });
+  }
 
   // Detect platform on current tab
   detectDesignPlatform();
@@ -883,7 +931,7 @@ async function sendDesignCmd(cmd) {
               operationSpeed: designOperationSpeed,
             }],
           });
-        } catch (_) {}
+        } catch (_) { }
       }
     }
   });
@@ -895,15 +943,15 @@ function startDesignTimer() {
     if (!designSessionStart) return;
     const now = Date.now();
     const currentPaused = designPauseStart ? (now - designPauseStart) : 0;
-    const elapsed   = Math.max(0, now - designSessionStart - designPausedAccumulated - currentPaused);
+    const elapsed = Math.max(0, now - designSessionStart - designPausedAccumulated - currentPaused);
     const remaining = Math.max(0, designSessionDuration - elapsed);
-    const pct       = Math.min(100, Math.round((elapsed / designSessionDuration) * 100));
+    const pct = Math.min(100, Math.round((elapsed / designSessionDuration) * 100));
 
-    if (designUI.elapsed)   designUI.elapsed.textContent   = formatTime(elapsed);
+    if (designUI.elapsed) designUI.elapsed.textContent = formatTime(elapsed);
     if (designUI.remaining) designUI.remaining.textContent = formatTime(remaining);
-    if (designUI.pct)       designUI.pct.textContent       = pct + '%';
-    if (designUI.fill)      designUI.fill.style.width      = pct + '%';
-    if (designUI.glow)      designUI.glow.style.width      = pct + '%';
+    if (designUI.pct) designUI.pct.textContent = pct + '%';
+    if (designUI.fill) designUI.fill.style.width = pct + '%';
+    if (designUI.glow) designUI.glow.style.width = pct + '%';
     if (designUI.progressBar) designUI.progressBar.setAttribute('aria-valuenow', pct);
 
     if (remaining === 0) {
@@ -933,7 +981,7 @@ function handleDesignStatus(detail) {
   if (pct !== undefined) {
     if (designUI.fill) designUI.fill.style.width = pct + '%';
     if (designUI.glow) designUI.glow.style.width = pct + '%';
-    if (designUI.pct)  designUI.pct.textContent  = pct + '%';
+    if (designUI.pct) designUI.pct.textContent = pct + '%';
     if (designUI.progressBar) designUI.progressBar.setAttribute('aria-valuenow', pct);
   }
   if (elapsed !== undefined && designUI.elapsed) {
@@ -976,12 +1024,12 @@ function setDesignBadge(status) {
 function setDesignButtons(state) {
   if (!designUI.btnStart) return;
   const running = state === 'running';
-  const paused  = state === 'paused';
-  const idle    = state === 'idle' || state === 'stopped' || state === 'done' || state === 'error';
-  designUI.btnStart.disabled  = !idle;
-  designUI.btnPause.disabled  = !running;
+  const paused = state === 'paused';
+  const idle = state === 'idle' || state === 'stopped' || state === 'done' || state === 'error';
+  designUI.btnStart.disabled = !idle;
+  designUI.btnPause.disabled = !running;
   designUI.btnResume.disabled = !paused;
-  designUI.btnStop.disabled   = idle;
+  designUI.btnStop.disabled = idle;
 }
 
 async function syncDesignStatus() {
@@ -1001,7 +1049,7 @@ async function syncDesignStatus() {
       }
       handleDesignStatus(res);
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 async function detectDesignPlatform() {
@@ -1035,7 +1083,7 @@ async function detectDesignPlatform() {
         else if (host.includes('miro.com')) detectedName = 'Miro';
         else if (host.includes('excalidraw.com')) detectedName = 'Excalidraw';
         else if (host.includes('polotno.com')) detectedName = 'Polotno Studio';
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (detectedName) {
