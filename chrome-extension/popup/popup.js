@@ -822,42 +822,15 @@ async function sendDesignCmd(cmd) {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  // Inject the design engine if not already present
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content/design-engine.js'],
-    });
-  } catch (_) {
-    // Already injected or injection failed — proceed anyway
-  }
+  const payload = {
+    action: 'designCmd',
+    cmd,
+    duration: designSessionDuration,
+    cursorSpeed: designCursorSpeed,
+    operationSpeed: designOperationSpeed,
+  };
 
-  // 1. Direct Chrome runtime tab messaging (Primary, reliable)
-  try {
-    await chrome.tabs.sendMessage(tab.id, {
-      action: 'designCmd',
-      cmd,
-      duration: designSessionDuration,
-      cursorSpeed: designCursorSpeed,
-      operationSpeed: designOperationSpeed,
-    });
-  } catch (_) {}
-
-  // 2. Post message into the page context fallback
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: (data) => window.postMessage(data, '*'),
-      args: [{
-        tbaDesign: cmd,
-        duration: designSessionDuration,
-        cursorSpeed: designCursorSpeed,
-        operationSpeed: designOperationSpeed,
-      }],
-    });
-  } catch (_) {}
-
-  // Optimistically update UI
+  // Optimistically update UI immediately for instantaneous response
   if (cmd === 'start') {
     designSessionStart = Date.now();
     designPausedAccumulated = 0;
@@ -886,6 +859,34 @@ async function sendDesignCmd(cmd) {
     setDesignButtons('idle');
     setDesignBadge('stopped');
   }
+
+  // 1. Direct Chrome runtime tab messaging (Primary, instantaneous)
+  chrome.tabs.sendMessage(tab.id, payload, async (response) => {
+    if (chrome.runtime.lastError || !response) {
+      // Content script was not yet present — inject and resend
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content/design-engine.js'],
+        });
+        chrome.tabs.sendMessage(tab.id, payload);
+      } catch (_) {
+        // Fallback postMessage
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: (data) => window.postMessage(data, '*'),
+            args: [{
+              tbaDesign: cmd,
+              duration: designSessionDuration,
+              cursorSpeed: designCursorSpeed,
+              operationSpeed: designOperationSpeed,
+            }],
+          });
+        } catch (_) {}
+      }
+    }
+  });
 }
 
 function startDesignTimer() {
@@ -988,6 +989,9 @@ async function syncDesignStatus() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return;
     const res = await chrome.tabs.sendMessage(tab.id, { action: 'designGetStatus' });
+    if (res && res.platform && designUI.platformValue) {
+      designUI.platformValue.textContent = res.platform;
+    }
     if (res && (res.running || res.paused)) {
       if (res.sessionDuration) designSessionDuration = res.sessionDuration;
       if (res.elapsed !== undefined) {
@@ -1004,20 +1008,56 @@ async function detectDesignPlatform() {
   if (!designUI.platformValue) return;
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.url) return;
-    const url  = new URL(tab.url);
-    const host = url.hostname;
-    let name = 'Generic Canvas';
-    if (host.includes('canva.com'))           name = 'Canva';
-    else if (host.includes('figma.com'))      name = 'Figma';
-    else if (host.includes('express.adobe')) name = 'Adobe Express';
-    else if (host.includes('photoshop.adobe')) name = 'Photoshop Web';
-    else if (host.includes('picsart.com'))    name = 'Picsart';
-    else if (host.includes('pixlr.com'))      name = 'Pixlr';
-    else if (host.includes('vectr.com'))      name = 'Vectr';
-    else if (host.includes('gravit.io'))      name = 'Gravit Designer';
-    designUI.platformValue.textContent = name;
-  } catch (_) {}
+    if (!tab) {
+      designUI.platformValue.textContent = 'Web Editor';
+      return;
+    }
+
+    let detectedName = null;
+    if (tab.url) {
+      try {
+        const url = new URL(tab.url);
+        const host = url.hostname.toLowerCase();
+        const path = url.pathname.toLowerCase();
+        if (host.includes('canva.com')) detectedName = 'Canva';
+        else if (host.includes('figma.com')) detectedName = 'Figma';
+        else if (host.includes('express.adobe') || host.includes('adobeexpress') || (host.includes('adobe.com') && path.includes('express'))) detectedName = 'Adobe Express';
+        else if (host.includes('photoshop.adobe')) detectedName = 'Photoshop Web';
+        else if (host.includes('illustrator.adobe')) detectedName = 'Illustrator Web';
+        else if (host.includes('photopea.com')) detectedName = 'Photopea';
+        else if (host.includes('picsart.com')) detectedName = 'Picsart';
+        else if (host.includes('pixlr.com')) detectedName = 'Pixlr';
+        else if (host.includes('penpot.app')) detectedName = 'Penpot';
+        else if (host.includes('framer.com')) detectedName = 'Framer';
+        else if (host.includes('webflow.com')) detectedName = 'Webflow';
+        else if (host.includes('vectr.com')) detectedName = 'Vectr';
+        else if (host.includes('gravit.io') || host.includes('corelvector')) detectedName = 'Corel Vector';
+        else if (host.includes('miro.com')) detectedName = 'Miro';
+        else if (host.includes('excalidraw.com')) detectedName = 'Excalidraw';
+        else if (host.includes('polotno.com')) detectedName = 'Polotno Studio';
+      } catch (_) {}
+    }
+
+    if (detectedName) {
+      designUI.platformValue.textContent = detectedName;
+      return;
+    }
+
+    // Fast check with content script
+    if (tab.id) {
+      chrome.tabs.sendMessage(tab.id, { action: 'designGetStatus' }, (res) => {
+        if (!chrome.runtime.lastError && res?.platform) {
+          designUI.platformValue.textContent = res.platform;
+        } else {
+          designUI.platformValue.textContent = 'Web Editor';
+        }
+      });
+    } else {
+      designUI.platformValue.textContent = 'Web Editor';
+    }
+  } catch (_) {
+    if (designUI.platformValue) designUI.platformValue.textContent = 'Web Editor';
+  }
 }
 
 // ─── Remote Control & QR Code ───────────────────────────────────────────────

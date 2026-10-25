@@ -72,24 +72,36 @@
 
   // ─── Platform Detection ─────────────────────────────────────────────────────
 
-  const PLATFORM_SIGNATURES = [
-    { name: 'canva', test: () => location.hostname.includes('canva.com') },
-    { name: 'figma', test: () => location.hostname.includes('figma.com') },
-    { name: 'adobe-express', test: () => location.hostname.includes('express.adobe.com') || location.hostname.includes('adobeexpress.com') },
-    { name: 'photoshop-web', test: () => location.hostname.includes('photoshop.adobe.com') },
-    { name: 'picsart', test: () => location.hostname.includes('picsart.com') },
-    { name: 'pixlr', test: () => location.hostname.includes('pixlr.com') },
-    { name: 'vectr', test: () => location.hostname.includes('vectr.com') },
-    { name: 'gravit', test: () => location.hostname.includes('designer.gravit.io') },
-    { name: 'generic-canvas', test: () => !!document.querySelector('canvas') },
-  ];
-
   function detectPlatform() {
-    for (const sig of PLATFORM_SIGNATURES) {
-      if (sig.test()) return sig.name;
+    const host = (location.hostname || '').toLowerCase();
+    const path = (location.pathname || '').toLowerCase();
+    const title = (document.title || '').toLowerCase();
+
+    if (host.includes('canva.com')) return 'Canva';
+    if (host.includes('figma.com')) return 'Figma';
+    if (host.includes('express.adobe') || host.includes('adobeexpress') || (host.includes('adobe.com') && path.includes('express'))) return 'Adobe Express';
+    if (host.includes('photoshop.adobe')) return 'Photoshop Web';
+    if (host.includes('illustrator.adobe')) return 'Illustrator Web';
+    if (host.includes('photopea.com') || title.includes('photopea')) return 'Photopea';
+    if (host.includes('pixlr.com')) return 'Pixlr';
+    if (host.includes('picsart.com')) return 'Picsart';
+    if (host.includes('penpot.app')) return 'Penpot';
+    if (host.includes('framer.com')) return 'Framer';
+    if (host.includes('webflow.com')) return 'Webflow';
+    if (host.includes('vectr.com')) return 'Vectr';
+    if (host.includes('gravit.io') || host.includes('corelvector')) return 'Corel Vector';
+    if (host.includes('miro.com')) return 'Miro';
+    if (host.includes('excalidraw.com')) return 'Excalidraw';
+    if (host.includes('polotno.com')) return 'Polotno Studio';
+
+    if (document.querySelector('canvas, [data-testid*="canvas"], [class*="canvas"], [class*="artboard"], .stage')) {
+      return 'Canvas Studio';
     }
-    return 'generic';
+    return 'Web Editor';
   }
+
+  // Pre-detect platform immediately on injection
+  designState.platform = detectPlatform();
 
   // ─── Utilities ──────────────────────────────────────────────────────────────
 
@@ -180,23 +192,36 @@
       '.stage',
       '#canvas',
       '#artboard',
+      'main',
+      '[role="main"]',
     ];
     for (const sel of candidates) {
       try {
         const el = document.querySelector(sel);
         if (el) {
           const r = el.getBoundingClientRect();
-          if (r.width > 120 && r.height > 120) return r;
+          if (r.width > 120 && r.height > 120) {
+            return {
+              left: Math.max(15, r.left),
+              top: Math.max(30, r.top),
+              right: Math.min(window.innerWidth - 15, r.right),
+              bottom: Math.min(window.innerHeight - 25, r.bottom),
+              width: Math.min(window.innerWidth - 30, r.width),
+              height: Math.min(window.innerHeight - 55, r.height),
+            };
+          }
         }
       } catch (_) { }
     }
+    const w = Math.max(300, window.innerWidth);
+    const h = Math.max(300, window.innerHeight);
     return {
-      left: 60,
-      top: 70,
-      right: window.innerWidth - 60,
-      bottom: window.innerHeight - 50,
-      width: window.innerWidth - 120,
-      height: window.innerHeight - 120,
+      left: Math.round(w * 0.08),
+      top: Math.round(h * 0.10),
+      right: Math.round(w * 0.92),
+      bottom: Math.round(h * 0.90),
+      width: Math.round(w * 0.84),
+      height: Math.round(h * 0.80),
     };
   }
 
@@ -1986,8 +2011,8 @@
     } catch (_) { }
 
     try {
-      // Brief human warm-up pause before first action
-      await sleep(rand(800, 1800), signal);
+      // Instant start — immediate human activation
+      await sleep(rand(30, 80), signal);
 
       while (!signal.aborted && designState.running) {
         // Enforce session duration limit

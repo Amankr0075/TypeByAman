@@ -133,7 +133,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'checkNativeHelper') {
     (async () => {
       try {
-        const resp = await fetch('http://127.0.0.1:9876/ping', { method: 'GET' });
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 150);
+        const resp = await fetch('http://127.0.0.1:9876/ping', { method: 'GET', signal: ctrl.signal });
+        clearTimeout(tid);
         const data = await resp.json();
         sendResponse({ online: data.ok === true });
       } catch {
