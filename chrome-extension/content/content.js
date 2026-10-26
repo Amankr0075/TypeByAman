@@ -356,9 +356,9 @@
       charIndex: 0,
       text: text,
       totalChars: text.length,
-      delay: delay || 50,
-      linebreakDelay: linebreakDelay || 0,
-      humanTypoMode: humanTypoMode !== undefined ? humanTypoMode : typingState.humanTypoMode,
+      delay: Number.isFinite(delay) && delay >= 1 ? delay : 50,
+      linebreakDelay: Number.isFinite(linebreakDelay) && linebreakDelay >= 0 ? linebreakDelay : 0,
+      humanTypoMode: humanTypoMode !== undefined ? humanTypoMode : false,
       typoRate: typoRate !== undefined ? typoRate : typingState.typoRate,
       abortController: ac,
       abortSignal: ac.signal,
@@ -413,10 +413,8 @@
       let nextThinkLine = 15 + Math.floor(Math.random() * 25); // 15–40 lines for thinking pause
       let nextRunLine = 75 + Math.floor(Math.random() * 100);  // 75–175 lines for code run
 
-      // Dynamic word tempo: some words fast, some words deliberate, some standard
+      // Dynamic word tempo
       let currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
-      let charsSinceLastThink5s = 0;
-      let nextThink5sThreshold = 140 + Math.floor(Math.random() * 160); // every ~25–55 words
 
       for (let i = 0; i < text.length; i++) {
         if (signal.aborted) break;
@@ -427,121 +425,42 @@
         const ch = text[i];
         typingState.charIndex = i;
 
-        charsSinceLastThink5s++;
-
         // Word boundary & punctuation detection
         const isWordBoundary = ch === ' ' || ch === '\t';
-        const isPunctuation = /[.,!?:;]/.test(ch);
         const isLineBreak = ch === '\n' || ch === '\r';
 
-        // ── 5-Second Human Thinking Pause ──────────────────────────────────────
-        // "while typing somewhere wait for 5 seconds and then continue writing"
-        if (charsSinceLastThink5s >= nextThink5sThreshold && (isWordBoundary || isPunctuation || isLineBreak) && !signal.aborted) {
-          charsSinceLastThink5s = 0;
-          nextThink5sThreshold = 150 + Math.floor(Math.random() * 180);
-          // Human stops typing to think / review notes: ~5 seconds (4.7s – 5.3s)
-          const think5s = 4700 + Math.floor(Math.random() * 600);
-          await sleep(think5s, signal);
-          if (signal.aborted) break;
-          // After 5s pause, pick a fresh word tempo
-          currentWordTempo = Math.random() < 0.4 ? 'fast' : (Math.random() < 0.25 ? 'deliberate' : 'normal');
-        } else if (isWordBoundary) {
-          // Switch tempo on word boundary: some words fast, some words deliberate
+        if (isWordBoundary) {
           currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
         }
 
         const now = Date.now();
         const isEligibleForTypo = !isLineBreak && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
 
-        // ── 1. Major Human Mistake (Every 35s–95s: types around 50-70 chars wrong, erases one by one, and retypes) ──
-        if (typingState.humanTypoMode && isEligibleForTypo && (now - lastMajorTypoTime) >= nextMajorTypoInterval) {
-          const wrongSnippet = getWrongChunk(); // around 50–70 characters
-          lastMajorTypoTime = Date.now();
-          // High-entropy re-randomization so no two mistakes follow a predictable cadence
-          nextMajorTypoInterval = 35000 + Math.random() * 60000;
-
-          // A. Type out the wrong 50-70 character sequence like a human thinking ahead
-          for (let w = 0; w < wrongSnippet.length; w++) {
-            if (signal.aborted) break;
-            await waitIfPaused();
-            if (signal.aborted) break;
-            await typeCharacter(el, wrongSnippet[w], signal);
-            const wDelay = Math.max(20, typingState.delay + Math.floor(Math.random() * 25 - 10));
-            await sleep(wDelay, signal);
-          }
-
-          if (signal.aborted) break;
-
-          // B. Realization pause: 350ms - 550ms ("Wait, this is wrong, let me erase it")
-          const realizationMs = 350 + Math.floor(Math.random() * 200);
-          await sleep(realizationMs, signal);
-          if (signal.aborted) break;
-
-          // C. Rapid backspacing: erase each wrong character one by one like holding backspace
-          for (let d = 0; d < wrongSnippet.length; d++) {
-            if (signal.aborted) break;
-            await waitIfPaused();
-            if (signal.aborted) break;
-            await deleteCharacter(el, signal);
-            const backspaceSpeed = 35 + Math.floor(Math.random() * 30);
-            await sleep(backspaceSpeed, signal);
-          }
-
-          if (signal.aborted) break;
-
-          // D. Cognitive reset hesitation: 250ms - 400ms before re-typing correct code
-          const resetPause = 250 + Math.floor(Math.random() * 150);
-          await sleep(resetPause, signal);
-          if (signal.aborted) break;
-
-          // E. Cleanly type the intended character and continue!
-          await typeCharacter(el, ch, signal);
-          continue;
-        }
-
-        // ── 2. Minor Key Slip (Every ~12-15s: adjacent key typo & backspace) ──
-        if (typingState.humanTypoMode && isEligibleForTypo && (now - lastMinorTypoTime) >= nextMinorTypoInterval) {
+        // Subtle realistic minor key slip: ONLY when human typo mode is active and delay >= 50ms
+        if (typingState.humanTypoMode && typingState.delay >= 50 && isEligibleForTypo && (now - lastMinorTypoTime) >= nextMinorTypoInterval) {
           const typoMade = await performTypoAndCorrect(el, ch, signal);
           if (signal.aborted) break;
 
           if (typoMade) {
             lastMinorTypoTime = Date.now();
-            nextMinorTypoInterval = 12000 + Math.random() * 4000;
+            nextMinorTypoInterval = 14000 + Math.random() * 8000;
 
-            // In ~40% of cases, human typed 1 more character before realizing mistake
-            let bonusChar = null;
-            if (i + 1 < text.length && Math.random() < 0.4 && /[a-zA-Z0-9]/.test(text[i + 1])) {
-              bonusChar = text[i + 1];
-              await typeCharacter(el, bonusChar, signal);
-              const bonusDelay = typingState.delay + Math.floor(Math.random() * typingState.delay * 0.5);
-              await sleep(bonusDelay, signal);
-              if (signal.aborted) break;
-            }
-
-            // Realization pause: 200–350ms
-            const noticePause = 200 + Math.floor(Math.random() * 150);
+            // Notice pause (100–180ms)
+            const noticePause = 100 + Math.floor(Math.random() * 80);
             await sleep(noticePause, signal);
             if (signal.aborted) break;
-
-            // Backspace delete bonus char if typed
-            if (bonusChar !== null) {
-              await deleteCharacter(el, signal);
-              await sleep(70 + Math.floor(Math.random() * 50), signal);
-              if (signal.aborted) break;
-            }
 
             // Backspace delete the typo char
             await deleteCharacter(el, signal);
 
-            // Brief pause before retyping (human cognitive recovery: 120–200ms)
-            await sleep(120 + Math.floor(Math.random() * 80), signal);
+            // Brief pause before retyping (60–120ms)
+            await sleep(60 + Math.floor(Math.random() * 60), signal);
             if (signal.aborted) break;
 
             // Retype the correct character
             await typeCharacter(el, ch, signal);
 
-            // Slight natural pause after fixing mistake
-            const recoverDelay = typingState.delay + Math.floor(Math.random() * 60);
+            const recoverDelay = Math.min(80, typingState.delay);
             await sleep(recoverDelay, signal);
             if (signal.aborted) break;
 
@@ -554,46 +473,23 @@
             continue; // move to next character
           }
         }
-        // ────────────────────────────────────────────────────────────────────
 
         await typeCharacter(el, ch, signal);
 
-        // Progress update (throttled to every 50 chars for performance)
-        if (i % 50 === 0 || i === text.length - 1) {
+        // Progress update (throttled to every 25 chars or end)
+        if (i % 25 === 0 || i === text.length - 1) {
           chrome.runtime.sendMessage({
             action: 'statusUpdate',
             status: 'typing',
             charIndex: i + 1,
             totalChars: text.length,
-          });
+          }).catch(() => {});
         }
 
-        // Natural human delay: dynamic word tempo + symbol/Shift latency (NEVER CONSTANT)
-        const extraDelay = isLineBreak ? (typingState.linebreakDelay || 250) : 0;
-        const totalDelay = calculateHumanDelay(ch, typingState.delay, currentWordTempo) + extraDelay;
+        // Delay: accurate speed mode timing that respects user's exact preset / custom setting
+        const extraDelay = isLineBreak ? (Number.isFinite(typingState.linebreakDelay) && typingState.linebreakDelay > 0 ? typingState.linebreakDelay : 0) : 0;
+        const totalDelay = calculateHumanDelay(ch, typingState.delay, currentWordTempo, typingState.humanTypoMode) + extraDelay;
         if (totalDelay > 0) await sleep(totalDelay, signal);
-
-        // ── Human Coding Behavior: Thinking Pauses & Run Code ──────────────────
-        if (isLineBreak && !signal.aborted) {
-          linesTyped++;
-          // A. Thinking pause & Reading Scroll: developer glances up to review code
-          if (linesTyped >= nextThinkLine) {
-            nextThinkLine = linesTyped + 15 + Math.floor(Math.random() * 25);
-            // On screen recording, smooth scroll slightly up as if reading previous function
-            if (Math.random() < 0.6) {
-              try { window.scrollBy({ top: -140, behavior: 'smooth' }); } catch {}
-            }
-            const thinkMs = 1200 + Math.floor(Math.random() * 2000);
-            await sleep(thinkMs, signal);
-            try { el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch {}
-            await sleep(250 + Math.floor(Math.random() * 250), signal);
-          }
-          // B. Run Code: stop to test/run code and observe output
-          if (linesTyped >= nextRunLine && !signal.aborted) {
-            nextRunLine = linesTyped + 75 + Math.floor(Math.random() * 100);
-            await maybeRunWebCode(el, signal);
-          }
-        }
       }
 
       if (!signal.aborted) {
@@ -602,7 +498,7 @@
         chrome.runtime.sendMessage({
           action: 'typingDone',
           totalChars: text.length,
-        });
+        }).catch(() => {});
       }
 
     } catch (err) {
@@ -617,49 +513,41 @@
     }
   }
 
-  // ─── Human Keystroke Latency Model (Non-constant, undetectable) ──────────────
-  function calculateHumanDelay(ch, baseDelay, tempo = 'normal') {
-    // 1. Word tempo persona:
-    // "some words should be typed fast and all other"
-    let tempoMultiplier;
-    if (tempo === 'fast') {
-      tempoMultiplier = 0.38 + Math.random() * 0.22; // 0.38x – 0.60x (typed fast, muscle memory burst)
-    } else if (tempo === 'deliberate') {
-      tempoMultiplier = 1.45 + Math.random() * 0.70; // 1.45x – 2.15x (complex / deliberate word)
-    } else {
-      tempoMultiplier = 0.78 + Math.random() * 0.44; // 0.78x – 1.22x (standard organic flow)
+  // ─── Speed & Keystroke Latency Model ───────────────────────────────────────
+  function calculateHumanDelay(ch, baseDelay, tempo = 'normal', humanMode = false) {
+    // 1. Instant & Fast speed modes (<= 15ms) or when humanMode is off: return exact delay
+    if (baseDelay <= 15 || !humanMode) {
+      return Math.max(1, baseDelay);
     }
 
-    // 2. Base delay scaling according to selected mode, but ALWAYS non-constant
-    // High-entropy log-normal jitter around the tempo-adjusted base
-    let delay = baseDelay * tempoMultiplier * (0.80 + Math.random() * 0.40);
+    // 2. Fast mode (<= 30ms): slight organic variance (±15%) without heavy penalties
+    if (baseDelay <= 30) {
+      const jitter = 0.90 + Math.random() * 0.20;
+      return Math.max(1, Math.round(baseDelay * jitter));
+    }
 
-    // 3. Biomechanical letter latency factors:
-    // Uppercase requires holding Shift (+35ms–75ms)
+    // 3. Normal / Slow / Deliberate modes (baseDelay > 30ms) with humanMode enabled:
+    let tempoMultiplier = 1.0;
+    if (tempo === 'fast') tempoMultiplier = 0.85;
+    else if (tempo === 'deliberate') tempoMultiplier = 1.20;
+
+    let delay = baseDelay * tempoMultiplier * (0.85 + Math.random() * 0.30);
+
+    // Subtle biomechanical adjustments scaled to baseDelay (never fixed large constants)
     if (ch >= 'A' && ch <= 'Z') {
-      delay += 35 + Math.random() * 40;
-    }
-    // Punctuation, braces, brackets and operators (+45ms–95ms)
-    else if (/[{}()[\];:,.=+\-*\/&|!<>?]/.test(ch)) {
-      delay += 45 + Math.random() * 50;
-    }
-    // Numbers on top row (+25ms–55ms)
-    else if (/[0-9]/.test(ch)) {
-      delay += 25 + Math.random() * 30;
-    }
-    // Space between words: cognitive boundary (+25ms–65ms)
-    else if (ch === ' ') {
-      delay += 25 + Math.random() * 40;
+      delay += Math.min(20, baseDelay * 0.25);
+    } else if (/[{}()[\];:,.=+\-*\/&|!<>?]/.test(ch)) {
+      delay += Math.min(25, baseDelay * 0.30);
+    } else if (ch === ' ') {
+      delay += Math.min(15, baseDelay * 0.20);
     }
 
-    // 4. Occasional human hesitation (6% chance of a 130–260ms pause)
-    if (Math.random() < 0.06) {
-      delay += 130 + Math.random() * 130;
+    // Occasional subtle hesitation only for slower pacing (> 60ms)
+    if (baseDelay >= 60 && Math.random() < 0.03) {
+      delay += Math.min(120, baseDelay * 0.6);
     }
 
-    // Floor at 2ms so even very fast mode never blocks, but keeps organic variation
-    const minDelay = baseDelay <= 10 ? 2 : Math.min(15, Math.round(baseDelay * 0.3));
-    return Math.max(minDelay, Math.round(delay));
+    return Math.max(1, Math.round(delay));
   }
 
   // ─── Web Code Editor "Run Code" Simulation ──────────────────────────────────
@@ -760,7 +648,7 @@
   }
 
   async function typeCharacter(el, ch, signal) {
-    emitNativeOsKey(ch);
+    if (signal?.aborted) return;
     const editorType = getEditorType(el);
 
     if (editorType === 'monaco') {
@@ -769,7 +657,7 @@
       await typeInCodeMirror(el, ch, signal);
     } else if (editorType === 'ace') {
       await typeInAce(el, ch, signal);
-    } else if (el.isContentEditable) {
+    } else if (el.isContentEditable || el.closest?.('[contenteditable="true"]')) {
       typeInContentEditable(el, ch);
     } else {
       typeInNativeInput(el, ch);
@@ -779,37 +667,62 @@
   // ─── Native Input Typing ────────────────────────────────────────────────────
 
   function typeInNativeInput(el, ch) {
-    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype, 'value'
-    ) || Object.getOwnPropertyDescriptor(
-      window.HTMLTextAreaElement.prototype, 'value'
-    );
+    try { el.focus(); } catch (_) {}
 
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? el.value.length;
+    const prevVal = el.value ?? '';
+    const start = el.selectionStart ?? prevVal.length;
+    const end = el.selectionEnd ?? prevVal.length;
 
-    const newValue = el.value.substring(0, start) + ch + el.value.substring(end);
+    // First attempt document.execCommand('insertText') which updates the DOM & history
+    let execSuccess = false;
+    try {
+      execSuccess = document.execCommand('insertText', false, ch);
+    } catch (_) {}
 
-    if (nativeInputValueSetter && nativeInputValueSetter.set) {
-      nativeInputValueSetter.set.call(el, newValue);
-    } else {
-      el.value = newValue;
+    // Check if execCommand actually inserted the character into the input
+    const valueChanged = el.value !== prevVal;
+
+    if (!valueChanged) {
+      // execCommand was ignored or not supported on this field: update value directly
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value'
+      ) || Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype, 'value'
+      );
+
+      const newValue = prevVal.substring(0, start) + ch + prevVal.substring(end);
+
+      if (nativeInputValueSetter && nativeInputValueSetter.set) {
+        nativeInputValueSetter.set.call(el, newValue);
+      } else {
+        el.value = newValue;
+      }
+
+      const newPos = start + ch.length;
+      try {
+        el.selectionStart = el.selectionEnd = newPos;
+      } catch (_) {}
+
+      // Fire single input event for framework reactivity (React, Vue, Svelte, Angular)
+      try {
+        el.dispatchEvent(new InputEvent('input', {
+          bubbles: true,
+          cancelable: false,
+          inputType: ch === '\n' ? 'insertLineBreak' : 'insertText',
+          data: ch === '\n' ? null : ch,
+        }));
+      } catch (_) {
+        el.dispatchEvent(new Event('input', { bubbles: true, cancelable: false }));
+      }
     }
-
-    const newPos = start + 1;
-    el.selectionStart = el.selectionEnd = newPos;
-
-    // Fire events that frameworks (React, Vue, Angular) listen to
-    el.dispatchEvent(new Event('input', { bubbles: true, cancelable: false }));
-    el.dispatchEvent(new Event('change', { bubbles: true, cancelable: false }));
   }
 
   // ─── ContentEditable Typing ─────────────────────────────────────────────────
 
   function typeInContentEditable(el, ch) {
+    try { el.focus(); } catch (_) {}
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) {
-      el.focus();
       const r = document.createRange();
       r.selectNodeContents(el);
       r.collapse(false);
@@ -818,23 +731,26 @@
     }
 
     if (ch === '\n' || ch === '\r') {
-      document.execCommand('insertParagraph', false, null);
+      const ok = document.execCommand('insertParagraph', false, null);
+      if (!ok) document.execCommand('insertLineBreak', false, null);
     } else {
       document.execCommand('insertText', false, ch);
     }
-
-    el.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   // ─── Monaco Editor ──────────────────────────────────────────────────────────
 
   async function typeInMonaco(el, ch, signal) {
-    // Try to find Monaco editor instance
     const monacoEl = el.closest('.monaco-editor');
     if (monacoEl) {
-      const textarea = monacoEl.querySelector('textarea.inputarea');
+      const textarea = monacoEl.querySelector('textarea.inputarea') || monacoEl.querySelector('textarea');
       if (textarea) {
         textarea.focus();
+        try {
+          // In Monaco, execCommand directly inserts into Monaco's text model without double typing
+          document.execCommand('insertText', false, ch);
+          return;
+        } catch (_) {}
         typeInNativeInput(textarea, ch);
         return;
       }
@@ -858,11 +774,18 @@
   // ─── CodeMirror ─────────────────────────────────────────────────────────────
 
   async function typeInCodeMirror(el, ch, signal) {
+    // CodeMirror 5
     const cmEl = el.closest('.CodeMirror');
     if (cmEl && cmEl.CodeMirror) {
       const cm = cmEl.CodeMirror;
       const cursor = cm.getCursor();
       cm.replaceRange(ch, cursor);
+      return;
+    }
+    // CodeMirror 6 (uses .cm-content contenteditable)
+    const cm6Content = el.closest('.cm-editor')?.querySelector('.cm-content') || (el.classList?.contains('cm-content') ? el : null);
+    if (cm6Content) {
+      typeInContentEditable(cm6Content, ch);
       return;
     }
     // Fallback
@@ -886,6 +809,15 @@
   // ─── Keyboard Event Simulation (fallback) ───────────────────────────────────
 
   function simulateKeyEvents(el, ch) {
+    if (el.tagName && (el.tagName.toLowerCase() === 'textarea' || el.tagName.toLowerCase() === 'input')) {
+      typeInNativeInput(el, ch);
+      return;
+    }
+    if (el.isContentEditable || el.closest?.('[contenteditable="true"]')) {
+      typeInContentEditable(el, ch);
+      return;
+    }
+
     const keyCode = ch.charCodeAt(0);
     const eventProps = {
       key: ch,
@@ -899,13 +831,6 @@
 
     el.dispatchEvent(new KeyboardEvent('keydown', eventProps));
     el.dispatchEvent(new KeyboardEvent('keypress', eventProps));
-
-    if (el.tagName.toLowerCase() === 'textarea' || el.tagName.toLowerCase() === 'input') {
-      typeInNativeInput(el, ch);
-    } else if (el.isContentEditable) {
-      typeInContentEditable(el, ch);
-    }
-
     el.dispatchEvent(new KeyboardEvent('keyup', eventProps));
   }
 
@@ -986,7 +911,7 @@
   }
 
   async function deleteCharacter(el, signal) {
-    emitNativeOsKey('Backspace');
+    if (signal?.aborted) return;
     const editorType = getEditorType(el);
 
     if (editorType === 'codemirror') {
@@ -994,7 +919,6 @@
       if (cmEl && cmEl.CodeMirror) {
         const cm = cmEl.CodeMirror;
         const cursor = cm.getCursor();
-        const lineContent = cm.getLine(cursor.line);
         if (cursor.ch > 0) {
           cm.replaceRange('', { line: cursor.line, ch: cursor.ch - 1 }, cursor);
         } else if (cursor.line > 0) {
@@ -1020,38 +944,56 @@
       if (monacoEl) {
         const ta = monacoEl.querySelector('textarea.inputarea') || monacoEl.querySelector('textarea');
         if (ta) {
-          ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
-          ta.dispatchEvent(new KeyboardEvent('keyup', { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
+          ta.focus();
+          try {
+            document.execCommand('delete', false, null);
+          } catch (_) {
+            ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
+            ta.dispatchEvent(new KeyboardEvent('keyup', { key: 'Backspace', keyCode: 8, which: 8, bubbles: true, cancelable: true }));
+          }
           return;
         }
       }
     }
 
-    if (el.isContentEditable || el.closest('[contenteditable="true"]')) {
+    if (el.isContentEditable || el.closest?.('[contenteditable="true"]')) {
+      try { el.focus(); } catch (_) {}
       const sel = window.getSelection();
       if (sel && sel.rangeCount) {
         document.execCommand('delete', false, null);
       }
-      el.dispatchEvent(new Event('input', { bubbles: true }));
       return;
     }
 
     // Native input / textarea
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? el.value.length;
-    if (start > 0) {
-      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value') ||
-        Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
-      const deletePos = start === end ? start - 1 : start;
-      const newValue = el.value.substring(0, deletePos) + el.value.substring(end);
-      if (nativeSetter && nativeSetter.set) {
-        nativeSetter.set.call(el, newValue);
-      } else {
-        el.value = newValue;
+    try { el.focus(); } catch (_) {}
+    const prevVal = el.value ?? '';
+    try {
+      document.execCommand('delete', false, null);
+    } catch (_) {}
+
+    // Only manually delete if execCommand did not change the input value
+    if (el.value === prevVal) {
+      const start = el.selectionStart ?? prevVal.length;
+      const end = el.selectionEnd ?? prevVal.length;
+      if (start > 0 || end > start) {
+        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value') ||
+          Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
+        const deletePos = start === end ? start - 1 : start;
+        const newValue = prevVal.substring(0, deletePos) + prevVal.substring(end);
+        if (nativeSetter && nativeSetter.set) {
+          nativeSetter.set.call(el, newValue);
+        } else {
+          el.value = newValue;
+        }
+        try { el.selectionStart = el.selectionEnd = deletePos; } catch (_) {}
+
+        try {
+          el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }));
+        } catch (_) {
+          el.dispatchEvent(new Event('input', { bubbles: true, cancelable: false }));
+        }
       }
-      el.selectionStart = el.selectionEnd = deletePos;
-      el.dispatchEvent(new Event('input', { bubbles: true, cancelable: false }));
-      el.dispatchEvent(new Event('change', { bubbles: true, cancelable: false }));
     }
   }
 
@@ -1096,6 +1038,7 @@
           status: typingState.active ? (typingState.paused ? 'paused' : 'typing') : 'idle',
           charIndex: typingState.charIndex,
           totalChars: typingState.totalChars,
+          delay: typingState.delay,
         });
         break;
 
@@ -1128,7 +1071,7 @@
         }
 
         // Load saved text and start typing immediately at cursor
-        chrome.storage.local.get(['tba_last_text', 'tba_delay', 'tba_linebreak_delay', 'tba_start_delay'], async (res) => {
+        chrome.storage.local.get(['tba_last_text', 'tba_delay', 'tba_linebreak_delay', 'tba_start_delay', 'tba_human_typo_mode'], async (res) => {
           const text = res.tba_last_text || '';
           if (!text.trim()) {
             showFeedback('⚠️ No text to type! Paste text into TypeByAman first.', 'warning');
@@ -1140,6 +1083,7 @@
             delay: res.tba_delay || 50,
             linebreakDelay: res.tba_linebreak_delay || 0,
             startDelay: res.tba_start_delay || 0,
+            humanTypoMode: res.tba_human_typo_mode !== undefined ? res.tba_human_typo_mode : false,
           });
           if (result.error) {
             showFeedback('⚠️ ' + result.error, 'error');
@@ -1176,13 +1120,13 @@
         break;
 
       case 'resumeTyping':
-        if (msg.delay !== undefined) typingState.delay = msg.delay;
+        if (msg.delay !== undefined) typingState.delay = Math.max(1, parseInt(msg.delay) || 50);
         typingState.paused = false;
         if (typingState.pauseResolve) {
           typingState.pauseResolve();
           typingState.pauseResolve = null;
         }
-        sendResponse({ ok: true });
+        sendResponse({ ok: true, delay: typingState.delay });
         break;
 
       case 'stopTyping':
@@ -1191,9 +1135,10 @@
         sendResponse({ ok: true, charIndex: typingState.charIndex });
         break;
 
+      case 'updateSpeed':
       case 'updateDelay':
-        typingState.delay = msg.delay;
-        sendResponse({ ok: true });
+        typingState.delay = Math.max(1, parseInt(msg.delay) || 50);
+        sendResponse({ ok: true, delay: typingState.delay });
         break;
 
       default:

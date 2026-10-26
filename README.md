@@ -10,7 +10,7 @@
 
 *A premium local typing/replay utility developed by **Aman Kumar** — Free Beta Evaluation • Future Subscription Planned.*
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen.svg)](https://amankr0075.github.io/TypeByAman/)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)](chrome-extension/)
 [![VS Code Extension](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](vscode-extension/)
@@ -407,15 +407,15 @@ npm run package
 
 ## 📄 License
 
-**MIT License**
+**Proprietary & Commercial Software License**
 
-Copyright (c) 2024 Aman Kumar
+Copyright (c) 2025-2026 Aman Kumar (https://github.com/Amankr0075). All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+- **Not Open Source:** This software is strictly proprietary and is NOT open source.
+- **Not Free for Unauthorized Use:** Use is restricted to authorized evaluations and explicit permissions granted by Aman Kumar.
+- **Not Editable by Others:** Modifying, decompiling, altering, distributing, or producing derivative works based on this software or its extensions is strictly prohibited.
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+For commercial licensing and inquiries: https://github.com/Amankr0075
 
 ---
 

@@ -1,7 +1,7 @@
 /**
  * TypeByAman — Interactive Web Typing & Replay Studio
  * Author: Aman Kumar | https://github.com/Amankr0075
- * 100% Free, Local, No Server Required.
+ * Proprietary & Commercial Software. All Rights Reserved.
  */
 
 (() => {
@@ -121,10 +121,44 @@ export function useGlassCounter(initialValue = 0, step = 1) {
 > Crafted with precision by **Aman Kumar** (github.com/Amankr0075)
 
 ### Highlights:
-- **100% Free**: No subscriptions, no telemetry, no sign-ups.
+- **Proprietary Software**: All rights reserved by Aman Kumar.
 - **Configurable Speed**: From 1ms to 5000ms delay.
 - **Zero Server Footprint**: Runs completely in your local browser and editor.
 - **Multi-Platform**: Available as Chrome Extension & VS Code Extension.`
+    },
+    'ai-creative': {
+      filename: 'ai_creative_works.js',
+      text: `/**
+ * TypeByAman — AI Creative Works (Groq Llama 3)
+ * Engineered by Aman Kumar (github.com/Amankr0075)
+ * Powered by Groq Llama 3.3 70B High-Speed Inference
+ */
+
+// 1. Creative Design Headline
+const HEADLINE = "BEYOND THE HORIZONS OF COMPUTATION";
+
+// 2. Architectural Design Philosophy
+const PHILOSOPHY = "True simplicity is the deliberate mastery of intent in every stroke.";
+
+// 3. Autonomous Creative Stream
+class CreativeIntelligenceEngine {
+  constructor(model = "llama-3.3-70b-versatile") {
+    this.model = model;
+    this.status = "active";
+  }
+
+  async generateArtifacts() {
+    return [
+      { type: "headline", text: "ELEVATE DIGITAL CRAFT" },
+      { type: "quote", text: "Design is thinking made visual and code made fluid." },
+      { type: "cta", text: "EXPLORE REPLAY MATRIX →" }
+    ];
+  }
+}
+
+// 4. Live Execution
+const engine = new CreativeIntelligenceEngine();
+console.log("AI Creative Works initialized with Groq Llama 3!");`
     },
     custom: {
       filename: 'custom_script.txt',
@@ -368,9 +402,9 @@ export function useGlassCounter(initialValue = 0, step = 1) {
   }
 
   // --- Typing Loop ---
-  let currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
+  let currentWordTempo = 'normal';
   let charsSinceLastThink5s = 0;
-  let nextThink5sThreshold = 140 + Math.floor(Math.random() * 160);
+  let nextThink5sThreshold = 200 + Math.floor(Math.random() * 200);
 
   function typeNextCharacter() {
     if (state.status !== 'typing') return;
@@ -392,36 +426,36 @@ export function useGlassCounter(initialValue = 0, step = 1) {
     const isPunctuation = /[.,!?:;]/.test(nextChar);
     const isLineBreak = nextChar === '\n';
 
-    // ── 5-Second Human Thinking Pause ──
-    // "while typing somewhere wait for 5 seconds and then continue writing"
-    if (charsSinceLastThink5s >= nextThink5sThreshold && (isWordBoundary || isPunctuation || isLineBreak)) {
+    // Natural brief pause (only if humanTypoMode is active and speed is deliberate/slow)
+    if (state.humanTypoMode && state.charDelay > 25 && charsSinceLastThink5s >= nextThink5sThreshold && (isWordBoundary || isPunctuation || isLineBreak)) {
       charsSinceLastThink5s = 0;
-      nextThink5sThreshold = 150 + Math.floor(Math.random() * 180);
-      currentWordTempo = Math.random() < 0.4 ? 'fast' : (Math.random() < 0.25 ? 'deliberate' : 'normal');
-      const think5s = 4700 + Math.floor(Math.random() * 600);
-      state.activeTimeout = setTimeout(typeNextCharacter, think5s);
+      nextThink5sThreshold = 200 + Math.floor(Math.random() * 200);
+      const briefPause = 350 + Math.floor(Math.random() * 350);
+      state.activeTimeout = setTimeout(typeNextCharacter, briefPause);
       return;
     }
 
-    if (isWordBoundary) {
-      // Switch word tempo: some words fast, some words deliberate
-      currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
-    }
-
-    // Dynamic tempo multiplier (never constant)
-    let tempoMult = 1.0;
-    if (currentWordTempo === 'fast') {
-      tempoMult = 0.40 + Math.random() * 0.22; // fast burst word
-    } else if (currentWordTempo === 'deliberate') {
-      tempoMult = 1.45 + Math.random() * 0.65; // deliberate word
+    let delay;
+    if (!state.humanTypoMode || state.charDelay <= 15) {
+      // Direct fast mode: exact designated delay down to 1ms
+      delay = Math.max(1, state.charDelay);
     } else {
-      tempoMult = 0.80 + Math.random() * 0.40; // normal variation
+      if (isWordBoundary) {
+        currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
+      }
+      let tempoMult = 1.0;
+      if (currentWordTempo === 'fast') {
+        tempoMult = 0.85 + Math.random() * 0.15;
+      } else if (currentWordTempo === 'deliberate') {
+        tempoMult = 1.15 + Math.random() * 0.20;
+      } else {
+        tempoMult = 0.95 + Math.random() * 0.10;
+      }
+      delay = Math.max(1, Math.round(state.charDelay * tempoMult));
     }
-
-    let delay = Math.max(15, Math.round(state.charDelay * tempoMult * (0.80 + Math.random() * 0.40)));
 
     if (isLineBreak && state.lineBreakDelay > 0) {
-      delay += Math.round(state.lineBreakDelay * (0.85 + Math.random() * 0.30));
+      delay += state.lineBreakDelay;
     }
 
     state.activeTimeout = setTimeout(typeNextCharacter, delay);
@@ -567,6 +601,12 @@ export function useGlassCounter(initialValue = 0, step = 1) {
   });
 
   // Toggles
+  if (el.toggleHumanTypo) {
+    el.toggleHumanTypo.addEventListener('change', (e) => {
+      state.humanTypoMode = e.target.checked;
+    });
+  }
+
   el.toggleSound.addEventListener('change', (e) => {
     sound.enabled = e.target.checked;
   });
@@ -581,10 +621,18 @@ export function useGlassCounter(initialValue = 0, step = 1) {
 
   // Preset Selector
   el.snippetSelect.addEventListener('change', (e) => {
-    const selected = PRESETS[e.target.value] || PRESETS.javascript;
+    const val = e.target.value;
+    const selected = PRESETS[val] || PRESETS.javascript;
     state.currentText = selected.text;
     el.tabName.textContent = selected.filename;
     el.rawTextInput.value = selected.text;
+
+    if (val === 'ai-creative') {
+      const aiCard = document.querySelector('.ai-studio-card');
+      if (aiCard) {
+        aiCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
     stopTyping();
   });
 

@@ -17,6 +17,7 @@ const STORAGE_KEYS = {
   START_DELAY: 'tba_start_delay',
   TEXT: 'tba_last_text',
   CUSTOM_MODE: 'tba_custom_mode',
+  HUMAN_TYPO_MODE: 'tba_human_typo_mode',
 };
 
 const SPEED_PRESETS = {
@@ -112,6 +113,8 @@ async function loadSettings() {
       state.startDelay = parseInt(result[STORAGE_KEYS.START_DELAY]) || 0;
       state.customMode = result[STORAGE_KEYS.CUSTOM_MODE] || false;
 
+      state.humanTypoMode = result[STORAGE_KEYS.HUMAN_TYPO_MODE] !== undefined ? result[STORAGE_KEYS.HUMAN_TYPO_MODE] : false;
+
       const savedText = result[STORAGE_KEYS.TEXT] || '';
       if (savedText) {
         els.textInput.value = savedText;
@@ -142,6 +145,7 @@ function saveSettings() {
     [STORAGE_KEYS.START_DELAY]: state.startDelay,
     [STORAGE_KEYS.TEXT]: els.textInput.value.substring(0, 50000),
     [STORAGE_KEYS.CUSTOM_MODE]: state.customMode,
+    [STORAGE_KEYS.HUMAN_TYPO_MODE]: state.humanTypoMode,
   });
 }
 
@@ -175,12 +179,15 @@ function applyDelay(delay, save = true) {
   els.speedSlider.value = Math.min(delay, 2000);
   els.customDelayInput.value = delay;
 
-  // Highlight matching preset
+  // Highlight matching preset or custom button
   els.presetBtns.forEach(btn => {
     const d = btn.dataset.delay;
     const isCustom = d === 'custom';
-    const matches = !isCustom && parseInt(d) === delay;
-    btn.classList.toggle('active', matches);
+    if (state.customMode) {
+      btn.classList.toggle('active', isCustom);
+    } else {
+      btn.classList.toggle('active', !isCustom && parseInt(d) === delay);
+    }
   });
 
   // Highlight matching chip
@@ -194,9 +201,13 @@ function applyDelay(delay, save = true) {
 function showCustomPanel(show) {
   state.customMode = show;
   els.customPanel.style.display = show ? 'block' : 'none';
-  if (show) {
-    document.getElementById('btn-custom-speed').classList.add('active');
-  }
+  els.presetBtns.forEach(btn => {
+    if (btn.dataset.delay === 'custom') {
+      btn.classList.toggle('active', show);
+    } else if (show) {
+      btn.classList.remove('active');
+    }
+  });
 }
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
@@ -305,7 +316,16 @@ async function sendToContent(message) {
   try {
     return await chrome.tabs.sendMessage(tab.id, message);
   } catch (e) {
-    return null;
+    // If content script was not yet loaded on this page, inject it and retry
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content/content.js'],
+      });
+      return await chrome.tabs.sendMessage(tab.id, message);
+    } catch (_) {
+      return null;
+    }
   }
 }
 
@@ -313,6 +333,9 @@ async function syncWithContentScript() {
   const response = await sendToContent({ action: 'getStatus' });
   if (response) {
     updateStatus(response.status, response.charIndex, response.totalChars);
+    if (response.delay && state.status === 'typing') {
+      applyDelay(response.delay, false);
+    }
   }
 }
 
@@ -361,6 +384,7 @@ async function startTyping() {
     delay: state.delay,
     linebreakDelay: state.linebreakDelay,
     startDelay: state.startDelay,
+    humanTypoMode: state.humanTypoMode || false,
   };
 
   const response = await sendToContent(config);
@@ -402,7 +426,7 @@ async function restartTyping() {
 }
 
 async function updateSpeedOnTheFly() {
-  await sendToContent({ action: 'updateDelay', delay: state.delay });
+  await sendToContent({ action: 'updateSpeed', delay: state.delay });
 }
 
 // ─── Event Bindings ──────────────────────────────────────────────────────────
@@ -482,14 +506,11 @@ function bindEvents() {
     btn.addEventListener('click', () => {
       const d = btn.dataset.delay;
       if (d === 'custom') {
-        // Remove active from all presets, show custom panel
-        els.presetBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         showCustomPanel(true);
+        applyDelay(state.delay);
+        if (state.status === 'typing') updateSpeedOnTheFly();
       } else {
         showCustomPanel(false);
-        els.presetBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         applyDelay(parseInt(d));
         if (state.status === 'typing') updateSpeedOnTheFly();
       }

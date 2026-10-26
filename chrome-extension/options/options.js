@@ -12,6 +12,7 @@ const KEYS = {
   START_DELAY:     'tba_start_delay',
   AUTO_SCROLL:     'tba_auto_scroll',
   REMEMBER_TEXT:   'tba_remember_text',
+  HUMAN_TYPO_MODE: 'tba_human_typo_mode',
 };
 
 const DEFAULTS = {
@@ -21,6 +22,7 @@ const DEFAULTS = {
   [KEYS.START_DELAY]:     0,
   [KEYS.AUTO_SCROLL]:     true,
   [KEYS.REMEMBER_TEXT]:   true,
+  [KEYS.HUMAN_TYPO_MODE]: false,
 };
 
 let settings = { ...DEFAULTS };
@@ -69,6 +71,9 @@ function applySettingsToUI() {
   // Toggles
   $('opt-auto-scroll').checked   = settings[KEYS.AUTO_SCROLL];
   $('opt-remember-text').checked = settings[KEYS.REMEMBER_TEXT];
+  if ($('opt-human-typo')) {
+    $('opt-human-typo').checked  = settings[KEYS.HUMAN_TYPO_MODE];
+  }
 }
 
 function gatherSettings() {
@@ -79,6 +84,7 @@ function gatherSettings() {
     [KEYS.START_DELAY]:     parseInt($('opt-start-delay').value) || 0,
     [KEYS.AUTO_SCROLL]:     $('opt-auto-scroll').checked,
     [KEYS.REMEMBER_TEXT]:   $('opt-remember-text').checked,
+    [KEYS.HUMAN_TYPO_MODE]: $('opt-human-typo') ? $('opt-human-typo').checked : false,
   };
 }
 

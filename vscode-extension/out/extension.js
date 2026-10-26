@@ -73,9 +73,12 @@ function activate(context) {
     }
     // Configuration change listener — update delay if active
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
-        if (e.affectsConfiguration('typebyaman') && engine?.isActive()) {
+        if (e.affectsConfiguration('typebyaman')) {
             const cfg = getConfig();
-            engine.updateDelay(cfg.characterDelay);
+            statusBar?.setStealthMode(cfg.stealthMode);
+            if (engine?.isActive()) {
+                engine.updateDelay(cfg.characterDelay);
+            }
         }
     }));
     console.log('TypeByAman: activated');
@@ -102,17 +105,27 @@ function onPanelCommand(msg) {
             cmdStop();
             break;
         case 'restart':
-            cmdRestart();
+            cmdRestart(msg.payload);
             break;
-        case 'updateDelay':
-            engine?.updateDelay(msg.payload.delay);
+        case 'updateDelay': {
+            const d = msg.payload.delay;
+            if (engine?.isActive())
+                engine.updateDelay(d);
+            vscode.workspace.getConfiguration('typebyaman').update('characterDelay', d, vscode.ConfigurationTarget.Global);
             break;
+        }
         case 'configureSpeed':
             cmdConfigureSpeed();
             break;
         case 'share':
             cmdShare();
             break;
+        case 'pasteFromClipboard': {
+            vscode.env.clipboard.readText().then(text => {
+                panel_1.TypeByAmanPanel.postMessage({ command: 'pasteText', text });
+            });
+            break;
+        }
     }
 }
 function getConfig() {
@@ -135,7 +148,9 @@ function getConfig() {
         lineBreakDelay: Math.max(0, cfg.get('lineBreakDelay', 0)),
         startDelay: Math.max(0, cfg.get('startDelay', 0)),
         speedPreset: preset,
-        enableRunPause: cfg.get('enableRunPause', true),
+        humanBehavior: cfg.get('humanBehavior', true),
+        stealthMode: cfg.get('stealthMode', true),
+        enableRunPause: cfg.get('enableRunPause', false),
         runCommand: cfg.get('runCommand', ''),
     };
 }
@@ -196,6 +211,7 @@ async function cmdStart(payload) {
         delay,
         lineBreakDelay,
         startDelay,
+        humanBehavior: cfg.humanBehavior,
         enableRunPause: cfg.enableRunPause,
         runCommand: cfg.runCommand || undefined,
         extensionPath: extContext?.extensionPath,
@@ -256,29 +272,31 @@ function cmdStop() {
     engine.stop();
     engine = null;
 }
-function cmdRestart() {
-    if (!engine) {
-        cmdStart();
-        return;
+function cmdRestart(payload) {
+    if (engine) {
+        const prev = engine.getConfig();
+        engine.stop();
+        engine = null;
+        const startConf = payload?.text ? payload : {
+            text: prev.text,
+            delay: prev.delay,
+            lineBreakDelay: prev.lineBreakDelay,
+            startDelay: prev.startDelay,
+        };
+        setTimeout(() => cmdStart(startConf), 150);
     }
-    const prev = engine.getConfig();
-    engine.stop();
-    engine = null;
-    setTimeout(() => cmdStart({
-        text: prev.text,
-        delay: prev.delay,
-        lineBreakDelay: prev.lineBreakDelay,
-        startDelay: prev.startDelay,
-    }), 150);
+    else {
+        cmdStart(payload);
+    }
 }
 async function cmdConfigureSpeed() {
     const items = [
-        { label: '$(zap) Very Slow', description: '1000 ms/char', delay: 1000 },
-        { label: '$(arrow-down) Slow', description: '250 ms/char', delay: 250 },
-        { label: '$(dash) Normal', description: '50 ms/char', delay: 50 },
-        { label: '$(arrow-up) Fast', description: '20 ms/char', delay: 20 },
-        { label: '$(flame) Very Fast', description: '5 ms/char', delay: 5 },
-        { label: '$(settings-gear) Custom…', description: 'Enter a custom delay', delay: -1 },
+        { label: '$(zap) Very Slow', description: '1000 ms/char', delay: 1000, preset: 'Very Slow' },
+        { label: '$(arrow-down) Slow', description: '250 ms/char', delay: 250, preset: 'Slow' },
+        { label: '$(dash) Normal', description: '50 ms/char', delay: 50, preset: 'Normal' },
+        { label: '$(arrow-up) Fast', description: '20 ms/char', delay: 20, preset: 'Fast' },
+        { label: '$(flame) Very Fast', description: '5 ms/char', delay: 5, preset: 'Very Fast' },
+        { label: '$(settings-gear) Custom…', description: 'Enter a custom delay', delay: -1, preset: 'Custom' },
     ];
     const selected = await vscode.window.showQuickPick(items, {
         placeHolder: 'TypeByAman: Select typing speed',
@@ -286,6 +304,7 @@ async function cmdConfigureSpeed() {
     if (!selected)
         return;
     let delay = selected.delay;
+    const presetName = selected.preset;
     if (delay === -1) {
         const input = await vscode.window.showInputBox({
             prompt: 'TypeByAman: Enter character delay in milliseconds',
@@ -303,12 +322,12 @@ async function cmdConfigureSpeed() {
     }
     // Update VS Code settings
     await vscode.workspace.getConfiguration('typebyaman').update('characterDelay', delay, vscode.ConfigurationTarget.Global);
-    await vscode.workspace.getConfiguration('typebyaman').update('speedPreset', 'Custom', vscode.ConfigurationTarget.Global);
+    await vscode.workspace.getConfiguration('typebyaman').update('speedPreset', presetName, vscode.ConfigurationTarget.Global);
     // Apply immediately if typing
     if (engine?.isActive()) {
         engine.updateDelay(delay);
     }
-    vscode.window.setStatusBarMessage(`TypeByAman: Speed set to ${delay} ms/char`, 2500);
+    vscode.window.setStatusBarMessage(`TypeByAman: Speed set to ${delay} ms/char (${presetName})`, 2500);
 }
 // ─── Utility ──────────────────────────────────────────────────────────────────
 async function cmdShare() {

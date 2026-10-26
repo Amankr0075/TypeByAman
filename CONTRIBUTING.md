@@ -55,4 +55,4 @@ npx serve .
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+TypeByAman is proprietary software developed by Aman Kumar. Released under a [Proprietary & Commercial Software License](LICENSE). Not open source. Unauthorized modification, copying, or redistribution is strictly prohibited.

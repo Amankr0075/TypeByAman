@@ -118,18 +118,11 @@ class TypingEngine {
             // Start delay
             if (startDelay > 0)
                 await this._sleep(startDelay, signal);
-            // Move cursor to end of document
-            await this._moveCursorToEnd(editor);
             const total = text.length;
-            let lastMajorTypoTime = Date.now();
-            // Randomized across 35s–90s to prevent any detectable pattern
-            let nextMajorTypoInterval = 35000 + Math.random() * 55000;
             let lastMinorTypoTime = Date.now();
-            let nextMinorTypoInterval = 10000 + Math.random() * 4000; // ~12 seconds for minor key slip
-            // Dynamic word tempo & 5-second human thinking pause tracker
+            let nextMinorTypoInterval = 14000 + Math.random() * 8000;
+            // Dynamic word tempo
             let currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
-            let charsSinceLastThink5s = 0;
-            let nextThink5sThreshold = 140 + Math.floor(Math.random() * 160); // every ~25–55 words
             for (let i = 0; i < total; i++) {
                 if (signal.aborted || this._stopped)
                     break;
@@ -139,115 +132,36 @@ class TypingEngine {
                     break;
                 this._charIndex = i;
                 const ch = text[i];
-                charsSinceLastThink5s++;
                 // Word boundary & punctuation detection
                 const isWordBoundary = ch === ' ' || ch === '\t';
-                const isPunctuation = /[.,!?:;]/.test(ch);
                 const isLineBreak = ch === '\n' || ch === '\r';
-                // ── 5-Second Human Thinking Pause ──────────────────────────────────────
-                // "while typing somewhere wait for 5 seconds and then continue writing"
-                if (charsSinceLastThink5s >= nextThink5sThreshold && (isWordBoundary || isPunctuation || isLineBreak) && !signal.aborted && !this._stopped) {
-                    charsSinceLastThink5s = 0;
-                    nextThink5sThreshold = 150 + Math.floor(Math.random() * 180);
-                    nativeCursorBridge_1.NativeCursorBridge.getInstance().wander(35, 20).catch(() => { });
-                    const think5s = 4700 + Math.floor(Math.random() * 600); // 4.7s – 5.3s (~5 seconds)
-                    await this._sleep(think5s, signal);
-                    if (signal.aborted || this._stopped)
-                        break;
-                    // After 5s pause, pick a fresh word tempo
-                    currentWordTempo = Math.random() < 0.4 ? 'fast' : (Math.random() < 0.25 ? 'deliberate' : 'normal');
-                }
-                else if (isWordBoundary) {
-                    // Switch tempo on word boundary: some words fast, some words deliberate
+                if (isWordBoundary) {
                     currentWordTempo = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.22 ? 'deliberate' : 'normal');
                 }
                 const now = Date.now();
                 const isEligibleForTypo = ch !== '\n' && ch !== '\r' && ch !== '\t' && /[a-zA-Z0-9]/.test(ch);
-                // ── 1. Major Human Mistake (Every 35s–90s: types 50-70 chars wrong, erases, and retypes) ──
-                if (isEligibleForTypo && (now - lastMajorTypoTime) >= nextMajorTypoInterval) {
-                    const wrongSnippet = getWrongChunk(); // 50–70 characters of plausible-looking wrong code
-                    lastMajorTypoTime = Date.now();
-                    // Re-randomize aggressively so two mistakes never fall on a predictable cadence
-                    nextMajorTypoInterval = 35000 + Math.random() * 55000;
-                    // A. Type out the wrong 20-25+ character sequence
-                    for (let w = 0; w < wrongSnippet.length; w++) {
-                        if (signal.aborted || this._stopped)
-                            break;
-                        await this._waitIfPaused(signal);
-                        if (signal.aborted || this._stopped)
-                            break;
-                        await this._typeChar(editor, wrongSnippet[w], signal);
-                        const wDelay = Math.max(20, this.config.delay + Math.floor(Math.random() * 25 - 10));
-                        await this._sleep(wDelay, signal);
-                    }
-                    if (signal.aborted || this._stopped)
-                        break;
-                    // B. Realization pause: 350ms - 550ms ("Wait, this is wrong, let me erase it")
-                    const realizationMs = 350 + Math.floor(Math.random() * 200);
-                    await this._sleep(realizationMs, signal);
-                    if (signal.aborted || this._stopped)
-                        break;
-                    // C. Rapid backspacing: erase each wrong character one by one like holding backspace
-                    for (let d = 0; d < wrongSnippet.length; d++) {
-                        if (signal.aborted || this._stopped)
-                            break;
-                        await this._waitIfPaused(signal);
-                        if (signal.aborted || this._stopped)
-                            break;
-                        await this._deleteChar(editor, signal);
-                        const backspaceSpeed = 35 + Math.floor(Math.random() * 30);
-                        await this._sleep(backspaceSpeed, signal);
-                    }
-                    if (signal.aborted || this._stopped)
-                        break;
-                    // D. Cognitive reset hesitation: 250ms - 400ms before re-typing correct code
-                    const resetPause = 250 + Math.floor(Math.random() * 150);
-                    await this._sleep(resetPause, signal);
-                    if (signal.aborted || this._stopped)
-                        break;
-                    // E. Cleanly type the intended character and continue!
-                    await this._typeChar(editor, ch, signal);
-                    continue;
-                }
-                // ── 2. Minor Key Slip (Every ~12-15s: adjacent key typo & backspace) ──
-                if (isEligibleForTypo && (now - lastMinorTypoTime) >= nextMinorTypoInterval) {
+                // Subtle realistic minor key slip: ONLY when humanBehavior is active and delay >= 50ms
+                if (this.config.humanBehavior && this.config.delay >= 50 && isEligibleForTypo && (now - lastMinorTypoTime) >= nextMinorTypoInterval) {
                     const wrongChar = getAdjacentKey(ch);
                     if (wrongChar && wrongChar !== ch) {
-                        // 1. Type the mistake character
                         await this._typeChar(editor, wrongChar, signal);
                         lastMinorTypoTime = Date.now();
-                        nextMinorTypoInterval = 12000 + Math.random() * 4000;
-                        // 2. In 40% of cases, type 1 extra character before noticing error
-                        let bonusChar = null;
-                        if (i + 1 < total && Math.random() < 0.4 && /[a-zA-Z0-9]/.test(text[i + 1])) {
-                            bonusChar = text[i + 1];
-                            await this._typeChar(editor, bonusChar, signal);
-                            await this._sleep(this.config.delay + Math.floor(Math.random() * 40), signal);
-                            if (signal.aborted || this._stopped)
-                                break;
-                        }
-                        // 3. Human realization pause (200-350ms)
-                        const noticePause = 200 + Math.floor(Math.random() * 150);
+                        nextMinorTypoInterval = 14000 + Math.random() * 8000;
+                        // Notice pause (100–180ms)
+                        const noticePause = 100 + Math.floor(Math.random() * 80);
                         await this._sleep(noticePause, signal);
                         if (signal.aborted || this._stopped)
                             break;
-                        // 4. Backspace delete bonus char if typed
-                        if (bonusChar !== null) {
-                            await this._deleteChar(editor, signal);
-                            await this._sleep(80 + Math.floor(Math.random() * 40), signal);
-                            if (signal.aborted || this._stopped)
-                                break;
-                        }
-                        // 5. Backspace delete mistake char
+                        // Backspace delete mistake char
                         await this._deleteChar(editor, signal);
-                        // 6. Brief recovery hesitation (120-200ms)
-                        await this._sleep(120 + Math.floor(Math.random() * 80), signal);
+                        // Brief recovery pause (60–120ms)
+                        await this._sleep(60 + Math.floor(Math.random() * 60), signal);
                         if (signal.aborted || this._stopped)
                             break;
-                        // 7. Retype the correct character
+                        // Retype the correct character
                         await this._typeChar(editor, ch, signal);
-                        // Slight pause after fixing error
-                        await this._sleep(this.config.delay + Math.floor(Math.random() * 50), signal);
+                        const recoverDelay = Math.min(80, this.config.delay);
+                        await this._sleep(recoverDelay, signal);
                         if (signal.aborted || this._stopped)
                             break;
                         if (i % 25 === 0 || i === total - 1) {
@@ -256,47 +170,19 @@ class TypingEngine {
                         continue; // move to next char
                     }
                 }
-                // ────────────────────────────────────────────────────────────────────
-                // Type the character
+                // Type the character directly and cleanly into editor
                 await this._typeChar(editor, ch, signal);
-                // Subtly nudge OS mouse cursor occasionally while typing (simulates hand on mouse)
-                if (i % 40 === 0 && Math.random() < 0.35) {
+                // Subtly nudge OS mouse cursor occasionally only if humanBehavior is enabled
+                if (this.config.humanBehavior && i % 50 === 0 && Math.random() < 0.25) {
                     nativeCursorBridge_1.NativeCursorBridge.getInstance().nudgeSubtly().catch(() => { });
                 }
-                // ── Track newlines for Visual Code Review / Run & Continue / Thinking Pauses ────
-                if (ch === '\n') {
-                    this._linesTyped++;
-                    // A. Visual Code Inspection (every 35–65 lines, 60% chance):
-                    //    Scrolls up slightly, hovers mouse to read earlier function/import, scrolls back down.
-                    //    On a screen recording, this completely mimics real human developer behavior.
-                    if (this._linesTyped % 40 === 0 && Math.random() < 0.65) {
-                        await this._inspectEarlierCode(editor, signal);
-                    }
-                    // B. Thinking pause: re-reads recent lines (15–40 lines)
-                    else if (this._linesTyped >= this._nextThinkAtLine) {
-                        this._nextThinkAtLine = this._linesTyped + this._randomThinkInterval();
-                        nativeCursorBridge_1.NativeCursorBridge.getInstance().wander(40, 25).catch(() => { });
-                        const thinkMs = 900 + Math.floor(Math.random() * 2200); // 0.9s – 3.1s
-                        if (!signal.aborted && !this._stopped) {
-                            await this._sleep(thinkMs, signal);
-                        }
-                    }
-                    // C. Run & Continue: save + run code in terminal + return to editor
-                    if (this.config.enableRunPause && this._linesTyped >= this._nextRunAtLine) {
-                        this._nextRunAtLine = this._linesTyped + this._randomRunInterval();
-                        if (!signal.aborted && !this._stopped) {
-                            await this._runCode(editor, signal);
-                        }
-                    }
-                }
-                // ──────────────────────────────────────────────────────────────────────
                 // Progress callback (throttled)
                 if (i % 25 === 0 || i === total - 1) {
                     this.config.onProgress(i + 1, total);
                 }
-                // Delay: Gaussian human keystroke dynamics (NEVER CONSTANT)
-                const baseDelay = isLineBreak ? (lineBreakDelay || 250) : this.config.delay;
-                const totalDelay = this._getHumanKeystrokeDelay(ch, baseDelay, currentWordTempo);
+                // Accurate delay calculation honoring user's exact speed settings
+                const extraDelay = isLineBreak ? (Number.isFinite(lineBreakDelay) && lineBreakDelay > 0 ? lineBreakDelay : 0) : 0;
+                const totalDelay = this._getHumanKeystrokeDelay(ch, this.config.delay, currentWordTempo) + extraDelay;
                 if (totalDelay > 0 && !signal.aborted) {
                     await this._sleep(totalDelay, signal);
                 }
@@ -317,34 +203,20 @@ class TypingEngine {
     async _typeChar(editor, ch, signal) {
         if (signal.aborted)
             return;
-        const bridge = nativeCursorBridge_1.NativeCursorBridge.getInstance();
-        if (bridge.isReady) {
-            if (ch === '\n') {
-                await bridge.keyTap('enter');
-            }
-            else if (ch === '\t') {
-                await bridge.keyTap('tab');
-            }
-            else {
-                await bridge.typeString(ch, 0);
-            }
-        }
-        else {
-            await editor.edit(editBuilder => {
-                const position = editor.selection.active;
-                editBuilder.insert(position, ch);
-            }, {
-                undoStopBefore: false,
-                undoStopAfter: false,
-            });
-            // Move cursor forward
-            const doc = editor.document;
-            const pos = editor.selection.active;
-            const newPos = doc.validatePosition(new vscode.Position(pos.line, pos.character));
-            editor.selection = new vscode.Selection(newPos, newPos);
-            // Auto-reveal cursor
-            editor.revealRange(new vscode.Range(newPos, newPos), vscode.TextEditorRevealType.Default);
-        }
+        await editor.edit(editBuilder => {
+            const position = editor.selection.active;
+            editBuilder.insert(position, ch);
+        }, {
+            undoStopBefore: false,
+            undoStopAfter: false,
+        });
+        // Move cursor forward
+        const doc = editor.document;
+        const pos = editor.selection.active;
+        const newPos = doc.validatePosition(new vscode.Position(pos.line, pos.character));
+        editor.selection = new vscode.Selection(newPos, newPos);
+        // Auto-reveal cursor
+        editor.revealRange(new vscode.Range(newPos, newPos), vscode.TextEditorRevealType.Default);
     }
     async _moveCursorToEnd(editor) {
         const doc = editor.document;
@@ -357,79 +229,66 @@ class TypingEngine {
     async _deleteChar(editor, signal) {
         if (signal.aborted)
             return;
-        const bridge = nativeCursorBridge_1.NativeCursorBridge.getInstance();
-        if (bridge.isReady) {
-            await bridge.keyTap('backspace');
+        const pos = editor.selection.active;
+        if (pos.character > 0) {
+            const prevPos = new vscode.Position(pos.line, pos.character - 1);
+            const range = new vscode.Range(prevPos, pos);
+            await editor.edit(editBuilder => {
+                editBuilder.delete(range);
+            }, {
+                undoStopBefore: false,
+                undoStopAfter: false,
+            });
+            editor.selection = new vscode.Selection(prevPos, prevPos);
         }
-        else {
-            const pos = editor.selection.active;
-            if (pos.character > 0) {
-                const prevPos = new vscode.Position(pos.line, pos.character - 1);
-                const range = new vscode.Range(prevPos, pos);
-                await editor.edit(editBuilder => {
-                    editBuilder.delete(range);
-                }, {
-                    undoStopBefore: false,
-                    undoStopAfter: false,
-                });
-                editor.selection = new vscode.Selection(prevPos, prevPos);
-            }
-            else if (pos.line > 0) {
-                const prevLine = pos.line - 1;
-                const prevChar = editor.document.lineAt(prevLine).text.length;
-                const prevPos = new vscode.Position(prevLine, prevChar);
-                const range = new vscode.Range(prevPos, pos);
-                await editor.edit(editBuilder => {
-                    editBuilder.delete(range);
-                }, {
-                    undoStopBefore: false,
-                    undoStopAfter: false,
-                });
-                editor.selection = new vscode.Selection(prevPos, prevPos);
-            }
+        else if (pos.line > 0) {
+            const prevLine = pos.line - 1;
+            const prevChar = editor.document.lineAt(prevLine).text.length;
+            const prevPos = new vscode.Position(prevLine, prevChar);
+            const range = new vscode.Range(prevPos, pos);
+            await editor.edit(editBuilder => {
+                editBuilder.delete(range);
+            }, {
+                undoStopBefore: false,
+                undoStopAfter: false,
+            });
+            editor.selection = new vscode.Selection(prevPos, prevPos);
         }
     }
     /**
-     * Calculates realistic human keystroke timing with log-normal Gaussian jitter,
-     * symbol/bracket latency, Shift modifier delays, and inter-word rhythm.
-     * Speed continuously varies so no detection software matches a constant cadence.
+     * Calculates typing delay respecting selected speed mode.
+     * If humanBehavior is active and delay >= 30ms, adds natural organic jitter.
      */
     _getHumanKeystrokeDelay(ch, baseDelay, tempo = 'normal') {
-        // 1. Word tempo multiplier: some words typed fast, some deliberate
-        let tempoMultiplier;
-        if (tempo === 'fast') {
-            tempoMultiplier = 0.38 + Math.random() * 0.22; // 0.38x–0.60x (fast burst)
+        // 1. Fast & Very Fast modes (<= 15ms) or humanBehavior disabled: return exact delay
+        if (baseDelay <= 15 || !this.config.humanBehavior) {
+            return Math.max(1, baseDelay);
         }
-        else if (tempo === 'deliberate') {
-            tempoMultiplier = 1.45 + Math.random() * 0.70; // 1.45x–2.15x (deliberate)
+        // 2. Fast mode (<= 30ms): slight organic variance (±15%) without heavy penalties
+        if (baseDelay <= 30) {
+            const jitter = 0.90 + Math.random() * 0.20;
+            return Math.max(1, Math.round(baseDelay * jitter));
         }
-        else {
-            tempoMultiplier = 0.78 + Math.random() * 0.44; // 0.78x–1.22x (standard)
-        }
-        // 2. Log-normal Gaussian jitter around base delay: ±35%
-        let delay = baseDelay * tempoMultiplier * (0.80 + Math.random() * 0.40);
-        // 3. Uppercase requires holding Shift: +35ms–75ms
+        // 3. Normal / Slow modes (baseDelay > 30ms) with humanBehavior:
+        let tempoMultiplier = 1.0;
+        if (tempo === 'fast')
+            tempoMultiplier = 0.85;
+        else if (tempo === 'deliberate')
+            tempoMultiplier = 1.20;
+        let delay = baseDelay * tempoMultiplier * (0.85 + Math.random() * 0.30);
         if (ch >= 'A' && ch <= 'Z') {
-            delay += 35 + Math.random() * 40;
+            delay += Math.min(20, baseDelay * 0.25);
         }
-        // 4. Punctuation, braces, brackets, and operators require reaching: +45ms–95ms
         else if (/[{}()[\];:,.=+\-*\/&|!<>?]/.test(ch)) {
-            delay += 45 + Math.random() * 50;
+            delay += Math.min(25, baseDelay * 0.30);
         }
-        // 5. Numbers on top row: +25ms–55ms
-        else if (/[0-9]/.test(ch)) {
-            delay += 25 + Math.random() * 30;
-        }
-        // 6. Space between words: slight cognitive transition
         else if (ch === ' ') {
-            delay += 25 + Math.random() * 40;
+            delay += Math.min(15, baseDelay * 0.20);
         }
-        // 7. Occasional human hesitation (6% chance of a slight 130-260ms pause)
-        if (Math.random() < 0.06) {
-            delay += 130 + Math.random() * 130;
+        if (baseDelay >= 60 && Math.random() < 0.03) {
+            delay += Math.min(120, baseDelay * 0.6);
         }
-        const minDelay = baseDelay <= 10 ? 2 : Math.min(15, Math.round(baseDelay * 0.3));
-        return Math.max(minDelay, Math.round(delay));
+        return Math.max(1, Math.round(delay));
     }
     /**
      * Simulates a human developer pausing, scrolling up to review earlier code or
