@@ -8,13 +8,13 @@
 
 **Type. Replay. Create.**
 
-*A premium local typing/replay utility — 100% free, unlimited use, no account required.*
+*A premium local typing/replay utility developed by **Aman Kumar** — Free Beta Evaluation • Future Subscription Planned.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen.svg)](https://amankr0075.github.io/TypeByAman/)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)](chrome-extension/)
 [![VS Code Extension](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](vscode-extension/)
-[![GitHub Stars](https://img.shields.io/github/stars/Amankr0075/TypeByAman?style=social)](https://github.com/Amankr0075/TypeByAman)
+[![Subscription Model](https://img.shields.io/badge/Model-Free%20Beta%20•%20Future%20Subscription-orange.svg)](#-commercial-roadmap--future-subscription-model)
 [![Author](https://img.shields.io/badge/Author-Aman%20Kumar-purple.svg)](https://github.com/Amankr0075)
 
 </div>
@@ -23,7 +23,7 @@
 
 ## 📖 Overview
 
-**TypeByAman** is a local typing/replay utility that allows you to provide text or source code and reproduce it gradually inside a supported text field, code editor, or online interactive studio. It's perfect for:
+**TypeByAman** is a local typing/replay utility designed and developed by **Aman Kumar** that allows you to provide text or source code and reproduce it gradually inside a supported text field, code editor, or online interactive studio. It's perfect for:
 
 - 🎥 **Coding demonstrations** — make your typing look natural on screen recordings
 - 📚 **Programming tutorials** — replay code character by character for clarity
@@ -32,7 +32,7 @@
 - 🧪 **Testing text-input workflows** — replay known inputs into text fields
 - ✍️ **Replaying your own text** — reproduce content you've written before
 
-> **Zero-Server Guarantee**: 100% of the code runs client-side in your browser or local editor. No backend server, no database, no sign-up, no subscriptions, and zero data leaves your machine. Hosted entirely on GitHub.
+> **Developer & Commercial Subscription Notice**: Developed by **Aman Kumar**. 100% of the code runs client-side on your device with zero cloud tracking. Currently available for open public beta evaluation. **This extension developed by the developer may charge you in the future under both monthly and yearly subscriptions.** Official pricing will be displayed once the project becomes commercially successful.
 
 ---
 
@@ -54,7 +54,7 @@
 | 🖱️ Real OS Cursor Control | Curved Bezier paths, micro-jitter, and thinking pauses for undetected human simulation |
 | ▶️ Run & Continue Mode | Periodically pauses, opens terminal/clicks run button, tests code, watches output, and resumes typing |
 | 🛡️ Anti-Detection Bypass | 100% hardware-level events, zero telemetry, indistinguishable from real physical keyboard & mouse |
-| 🆓 100% free | No subscription, no account, no paywall — MIT Licensed |
+| 💳 Subscription Model | Free Public Beta • The developer may charge in the future under monthly and yearly subscriptions (pricing displayed upon commercial success) |
 
 ---
 
@@ -424,6 +424,21 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 If you find **TypeByAman** helpful or valuable for your workflow, demos, or tutorials, please consider giving this repository a **star (★)** on GitHub. Your support is greatly appreciated and helps motivate ongoing improvements and maintenance.
 
 [![Star on GitHub](https://img.shields.io/badge/Star%20on%20GitHub-★%20TypeByAman-yellow?style=for-the-badge&logo=github)](https://github.com/Amankr0075/TypeByAman)
+
+---
+
+## 💳 Commercial Roadmap & Future Subscription Model
+
+TypeByAman is authored and maintained by **Aman Kumar**. 
+
+> ⚠️ **Commercial Subscription Notice:**  
+> This extension which is developed by the developer may charge you in the future in **monthly or yearly both as a subscription**.  
+> The software is currently provided free of charge for open beta evaluation and testing. **The exact subscription price will be displayed once the project becomes successful.**
+
+### Planned Subscription Tiers:
+- **Free Public Beta**: Complete access to the web studio, Chrome extension, VS Code extension, and OS Hardware Bridge while in evaluation phase.
+- **Monthly Subscription (Upcoming)**: Flexible month-to-month access for developers, students, and content creators. Price will be announced upon commercial release.
+- **Yearly Subscription (Upcoming)**: Discounted annual billing plan with priority updates and dedicated developer support. Price will be announced upon commercial release.
 
 ---
 

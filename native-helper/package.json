@@ -5,6 +5,9 @@
   "main": "cursor-helper.js",
   "scripts": {
     "start": "node cursor-helper.js",
+    "start-silent": "wscript start-silent.vbs",
+    "setup-autostart": "node setup-autostart.js",
+    "remove-autostart": "node remove-autostart.js",
     "install-deps": "npm install @nut-tree/nut-js"
   },
   "dependencies": {

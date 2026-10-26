@@ -30,6 +30,14 @@
 
 'use strict';
 
+// Ignore broken pipe errors when running in windowless/detached background mode
+process.stdout.on?.('error', () => {});
+process.stderr.on?.('error', () => {});
+process.on('uncaughtException', (err) => {
+  if (err.code === 'EPIPE') return;
+  try { process.stderr.write(`Uncaught: ${err.message}\n`); } catch (_) {}
+});
+
 const readline = require('readline');
 const http = require('http');
 let WebSocketServer;
@@ -380,6 +388,12 @@ function startServer() {
 
   server.on('error', err => {
     process.stderr.write(`[TBA NativeHelper] Server port error: ${err.message}\n`);
+    if (err.code === 'EADDRINUSE') {
+      setTimeout(() => {
+        try { server.close(); } catch (_) {}
+        server.listen(PORT, '127.0.0.1');
+      }, 1500);
+    }
   });
 }
 
@@ -394,6 +408,9 @@ async function main() {
 
   // Start HTTP and WebSocket listener for browser extension
   startServer();
+
+  // Keep process alive indefinitely in background daemon mode
+  setInterval(() => {}, 60000);
 
   // Signal ready to stdout for VS Code child process
   process.stdout.write(JSON.stringify({ ok: true, ready: true, version: '1.0.0' }) + '\n');
@@ -420,9 +437,13 @@ async function main() {
     }
   });
 
-  rl.on('close', () => {
-    process.exit(0);
-  });
+  // Only exit on stdin close if explicitly configured as parent-pipe child.
+  // This allows cursor-helper.js to run as a persistent background server for Chrome Extension.
+  if (process.env.TBA_PARENT_PIPE === '1') {
+    rl.on('close', () => {
+      process.exit(0);
+    });
+  }
 }
 
 main().catch(err => {

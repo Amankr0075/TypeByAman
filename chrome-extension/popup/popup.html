@@ -56,6 +56,14 @@
     </div>
   </header>
 
+  <!-- Developer & Future Subscription Notice Banner -->
+  <div class="developer-sub-banner" id="dev-sub-banner">
+    <div class="sub-banner-content">
+      <span class="sub-banner-badge">Developer Notice</span>
+      <span class="sub-banner-text">Developed by <strong>Aman Kumar</strong>. Free during beta evaluation. The developer may charge you in the future under monthly or yearly subscriptions. Pricing will be displayed once the project becomes successful.</span>
+    </div>
+  </div>
+
   <!-- Main Content -->
   <main class="app-main">
 
@@ -105,6 +113,15 @@
       <div class="progress-track" aria-label="Typing progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progress-bar-container">
         <div class="progress-fill" id="progress-fill" style="width:0%"></div>
         <div class="progress-glow" id="progress-glow" style="width:0%"></div>
+      </div>
+
+      <!-- Native OS Hardware Bridge status bar -->
+      <div class="native-bridge-strip" id="bridge-status-strip" title="OS Hardware Bridge: sends real OS keyboard and mouse events matching screen capture">
+        <div class="bridge-indicator">
+          <span class="bridge-status-dot offline" id="bridge-dot"></span>
+          <span class="bridge-text" id="bridge-text">OS Bridge: Checking...</span>
+        </div>
+        <button class="bridge-help-pill" id="btn-bridge-guide" type="button" title="Native Helper Setup Guide">Setup Guide</button>
       </div>
 
       <!-- Text Input Area -->
@@ -429,13 +446,28 @@
         <p class="about-version">Version 1.0.0</p>
 
         <div class="about-badges">
-          <span class="badge green">100% Free</span>
-          <span class="badge blue">Unlimited Use</span>
+          <span class="badge blue">Developed by Aman Kumar</span>
+          <span class="badge green">Free Beta Evaluation</span>
           <span class="badge purple">Local Processing</span>
         </div>
         <div class="about-badges">
-          <span class="badge">No Subscription</span>
-          <span class="badge">No Account Required</span>
+          <span class="badge orange">Future Subscription (Monthly &amp; Yearly)</span>
+        </div>
+
+        <div class="subscription-notice-card">
+          <div class="sub-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+              <line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+            <span>Future Subscription Model</span>
+          </div>
+          <p class="sub-card-desc">
+            TypeByAman is developed by <strong>Aman Kumar</strong>. All features are currently free during this public beta evaluation phase.
+          </p>
+          <div class="sub-card-highlight">
+            🔔 <strong>Notice:</strong> The developer may charge you in the future under both <strong>monthly</strong> and <strong>yearly</strong> subscription options. Official pricing will be displayed once the project becomes commercially successful.
+          </div>
         </div>
 
         <div class="about-divider"></div>

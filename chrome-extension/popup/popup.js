@@ -85,6 +85,10 @@ const els = {
   creatorLink: $('creator-link'),
   btnShare: $('btn-share'),
   btnAboutShare: $('btn-about-share'),
+  bridgeStrip: $('bridge-status-strip'),
+  bridgeDot: $('bridge-dot'),
+  bridgeText: $('bridge-text'),
+  btnBridgeGuide: $('btn-bridge-guide'),
 };
 
 // ─── Initialization ──────────────────────────────────────────────────────────
@@ -94,6 +98,7 @@ async function init() {
   bindEvents();
   updateUI();
   syncWithContentScript();
+  checkNativeBridgeStatus();
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -311,6 +316,31 @@ async function syncWithContentScript() {
   }
 }
 
+// ─── Native OS Hardware Bridge Status ────────────────────────────────────────
+
+function checkNativeBridgeStatus() {
+  if (!els.bridgeStrip) return;
+  try {
+    chrome.runtime.sendMessage({ action: 'checkNativeHelper' }, (res) => {
+      if (chrome.runtime.lastError || !res || !res.online) {
+        if (els.bridgeDot) els.bridgeDot.className = 'bridge-status-dot offline';
+        if (els.bridgeStrip) {
+          els.bridgeStrip.className = 'native-bridge-strip offline';
+          els.bridgeStrip.title = 'Native helper is offline. Keystrokes & mouse will only be DOM-level. Click Setup Guide.';
+        }
+        if (els.bridgeText) els.bridgeText.textContent = 'OS Hardware Bridge: OFFLINE';
+      } else {
+        if (els.bridgeDot) els.bridgeDot.className = 'bridge-status-dot online';
+        if (els.bridgeStrip) {
+          els.bridgeStrip.className = 'native-bridge-strip online';
+          els.bridgeStrip.title = 'Native helper active! Real OS keyboard & mouse hardware events are enabled.';
+        }
+        if (els.bridgeText) els.bridgeText.textContent = 'OS Hardware Bridge: ACTIVE';
+      }
+    });
+  } catch (_) { }
+}
+
 // ─── Typing Controls ─────────────────────────────────────────────────────────
 
 async function startTyping() {
@@ -387,6 +417,14 @@ function bindEvents() {
     chrome.runtime.openOptionsPage();
     window.close();
   });
+
+  // OS Hardware Bridge setup guide
+  if (els.btnBridgeGuide) {
+    els.btnBridgeGuide.addEventListener('click', () => {
+      showMessage('🚀 Press Win + R, type "start" and press Enter to launch OS Hardware Bridge silently! (Type "stop" to terminate). It enables real OS keyboard & mouse hardware events.', 'info', 8000);
+      checkNativeBridgeStatus();
+    });
+  }
 
   // Tabs
   els.tabs.forEach(btn => {

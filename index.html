@@ -30,6 +30,18 @@
   <div class="glow-orb orb-2" aria-hidden="true"></div>
   <div class="glow-orb orb-3" aria-hidden="true"></div>
 
+  <!-- Subscription Notice Top Announcement Bar -->
+  <aside class="announcement-bar" role="banner" aria-label="Subscription Notice">
+    <div class="container announcement-content">
+      <span class="announcement-pill">Early Access Notice</span>
+      <span class="announcement-text">
+        TypeByAman is developed by <strong>Aman Kumar</strong>. Currently free for public testing &amp; evaluation. 
+        <strong>Note:</strong> The developer may charge in the future on a monthly or yearly subscription basis. Official pricing will be displayed once the extension achieves commercial success.
+      </span>
+      <a href="#subscription-info" class="announcement-link">Subscription Policy &rarr;</a>
+    </div>
+  </aside>
+
   <!-- Header / Navbar -->
   <header class="app-header">
     <div class="container header-container">
@@ -40,7 +52,7 @@
         </div>
         <div class="brand-text">
           <span class="brand-title">TypeByAman</span>
-          <span class="brand-badge">v1.0 • 100% Free</span>
+          <span class="brand-badge">Beta • Future Subscription Planned</span>
         </div>
       </div>
 
@@ -48,6 +60,7 @@
         <a href="#studio" class="nav-link active">Live Studio</a>
         <a href="#features" class="nav-link">Features</a>
         <a href="#extensions" class="nav-link">Extensions</a>
+        <a href="#subscription-info" class="nav-link">Pricing &amp; Subscription</a>
         <a href="#shortcuts" class="nav-link">Shortcuts</a>
         <a href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer" class="btn-github">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -92,8 +105,8 @@
       <!-- Quick Metrics Strip -->
       <div class="metrics-strip">
         <div class="metric-item">
-          <span class="metric-val">100%</span>
-          <span class="metric-lbl">Free Forever</span>
+          <span class="metric-val">Public Beta</span>
+          <span class="metric-lbl">Free Access Now</span>
         </div>
         <div class="metric-divider"></div>
         <div class="metric-item">
@@ -102,13 +115,13 @@
         </div>
         <div class="metric-divider"></div>
         <div class="metric-item">
-          <span class="metric-val">0 Cloud Calls</span>
-          <span class="metric-lbl">Total Local Privacy</span>
+          <span class="metric-val">AI Powered</span>
+          <span class="metric-lbl">Groq Llama 3.3 Engine</span>
         </div>
         <div class="metric-divider"></div>
         <div class="metric-item">
-          <span class="metric-val">3 Platforms</span>
-          <span class="metric-lbl">Web • Chrome • VS Code</span>
+          <span class="metric-val">Hardware Sync</span>
+          <span class="metric-lbl">OS Kernel Bridge</span>
         </div>
       </div>
     </div>
@@ -126,6 +139,70 @@
       <div class="studio-grid">
         <!-- Control Sidebar -->
         <div class="studio-sidebar card-glass">
+
+          <!-- OS Hardware Bridge Live Status -->
+          <div class="control-group">
+            <div class="os-bridge-card" id="web-os-bridge-card" title="OS Hardware Bridge: sends real OS keyboard & mouse events via native-helper">
+              <div class="bridge-card-header">
+                <span class="bridge-status-dot offline" id="web-bridge-dot"></span>
+                <span class="bridge-status-title" id="web-bridge-title">OS Hardware Bridge: Checking...</span>
+              </div>
+              <p class="bridge-card-desc" id="web-bridge-desc">Real OS hardware keyboard and mouse event synchronization for screen recording.</p>
+              <div class="bridge-card-actions">
+                <span class="bridge-shortcut-badge">Win + R &rarr; <code>start</code> / <code>stop</code></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Creative Engine & Groq API Key Entry -->
+          <div class="control-group ai-studio-card">
+            <div class="ai-card-header">
+              <div class="ai-title-wrap">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                <span>AI Creative Engine</span>
+              </div>
+              <span class="ai-badge-model">Groq Llama 3.3</span>
+            </div>
+
+            <div class="ai-key-row">
+              <input type="password" id="web-api-key-input" class="form-input-sm" placeholder="Paste Groq API Key (gsk_...)" autocomplete="off" />
+              <button type="button" class="btn-sm btn-accent" id="btn-save-web-key">Save</button>
+            </div>
+            <div class="key-status-row" id="key-status-row">
+              <span class="key-hint" id="key-hint-text">Using local dictionary fallback</span>
+              <button type="button" class="btn-link-xs" id="btn-toggle-key-visibility">Show</button>
+            </div>
+
+            <!-- AI Prompt Generator -->
+            <div class="ai-prompt-controls">
+              <label class="control-label" for="ai-category-select">
+                <span>AI Prompt Category</span>
+              </label>
+              <select id="ai-category-select" class="form-select select-sm">
+                <option value="algorithm">JavaScript • High-Performance Algorithm</option>
+                <option value="python-ml">Python • Machine Learning Module</option>
+                <option value="react-ui">React • Modern UI Component</option>
+                <option value="headline">Creative • Bold Design Headline</option>
+                <option value="quote">Thought • Architectural Design Quote</option>
+                <option value="cta">Marketing • High-Converting Button CTA</option>
+                <option value="custom">Custom AI Prompt...</option>
+              </select>
+
+              <div id="ai-custom-prompt-container" style="display: none; margin-top: 8px;">
+                <input type="text" id="ai-custom-prompt-input" class="form-input-sm" placeholder="e.g. Write a Rust function for binary tree inversion" />
+              </div>
+
+              <button type="button" class="btn-ai-generate" id="btn-generate-ai">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span id="btn-generate-ai-text">Generate with AI &amp; Load</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Preset Snippets -->
           <div class="control-group">
             <label class="control-label" for="snippet-select">
@@ -192,6 +269,15 @@
           <!-- Feature Toggles -->
           <div class="control-group toggles-group">
             <label class="toggle-item">
+              <input type="checkbox" id="toggle-human-typo" checked>
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">
+                <strong>Human Mistake Engine</strong>
+                <small>Realistic mistakes &amp; backspace</small>
+              </span>
+            </label>
+
+            <label class="toggle-item">
               <input type="checkbox" id="toggle-sound" checked>
               <span class="toggle-slider"></span>
               <span class="toggle-label">
@@ -204,7 +290,7 @@
               <input type="checkbox" id="toggle-indent" checked>
               <span class="toggle-slider"></span>
               <span class="toggle-label">
-                <strong>Preserve Indents & Spaces</strong>
+                <strong>Preserve Indents &amp; Spaces</strong>
                 <small>Exact code formatting</small>
               </span>
             </label>
@@ -596,6 +682,75 @@
     </div>
   </section>
 
+  <!-- Future Pricing & Subscription Section -->
+  <section class="pricing-section" id="subscription-info">
+    <div class="container">
+      <div class="pricing-banner-card">
+        <div class="pricing-header">
+          <span class="pricing-badge-pill">Developer Notice</span>
+          <h2 class="section-title">Subscription &amp; Future Commercial Plans</h2>
+          <p class="section-desc">
+            <strong>TypeByAman</strong> is an independent software tool conceived and engineered by developer <strong>Aman Kumar</strong> (<a href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer">@Amankr0075</a>).
+          </p>
+        </div>
+
+        <div class="pricing-grid">
+          <!-- Current Beta Card -->
+          <div class="pricing-plan-card">
+            <span class="plan-type">Phase 1 • Current</span>
+            <h3 class="plan-title">Free Public Beta</h3>
+            <div class="plan-price-tag">
+              <strong>$0</strong> / evaluation period
+            </div>
+            <ul class="plan-features">
+              <li>Full Web Studio &amp; AI Engine access</li>
+              <li>Chrome Extension &amp; VS Code Extension</li>
+              <li>Human Mistake &amp; Typo Simulation</li>
+              <li>Native OS Cursor &amp; Hardware Bridge</li>
+              <li>100% Client-side local execution</li>
+            </ul>
+          </div>
+
+          <!-- Future Monthly Card -->
+          <div class="pricing-plan-card featured">
+            <span class="plan-type">Future Plan • Commercial Rollout</span>
+            <h3 class="plan-title">Monthly Subscription</h3>
+            <div class="plan-price-tag">
+              <strong>TBA</strong> / month
+            </div>
+            <ul class="plan-features">
+              <li>All features unlocked with unlimited quotas</li>
+              <li>Priority AI Creative Engine updates</li>
+              <li>Continuous stealth &amp; anti-detection patches</li>
+              <li>Cloud settings sync &amp; multi-profile presets</li>
+              <li>Direct developer support via GitHub</li>
+            </ul>
+          </div>
+
+          <!-- Future Yearly Card -->
+          <div class="pricing-plan-card">
+            <span class="plan-type">Future Plan • Maximum Savings</span>
+            <h3 class="plan-title">Yearly Subscription</h3>
+            <div class="plan-price-tag">
+              <strong>TBA</strong> / year (Discounted)
+            </div>
+            <ul class="plan-features">
+              <li>All Monthly Plan benefits included</li>
+              <li>Discounted annual billing</li>
+              <li>Early access to beta features &amp; plugins</li>
+              <li>Commercial license for teams &amp; creators</li>
+              <li>VIP support from the developer</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="pricing-disclaimer-box">
+          <strong>Important Policy Notice:</strong> This software and extension is developed by the developer <strong>Aman Kumar</strong>. Please be advised that the developer may charge you in the future under both <strong>Monthly</strong> and <strong>Yearly</strong> subscription models. Exact pricing will be displayed and announced once the project achieves commercial success. Early evaluation remains free during this phase.
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Footer -->
   <footer class="app-footer">
     <div class="container footer-container">
@@ -606,8 +761,8 @@
             <span class="brand-title">TypeByAman</span>
           </div>
           <p class="footer-bio">
-            A premium, 100% free local typing & replay utility crafted with care by <strong>Aman Kumar</strong>.
-            No servers, no tracking, no subscription. Hosted directly on GitHub.
+            Crafted with care by <strong>Aman Kumar</strong>.
+            Currently in free evaluation rollout. Note: Future releases of this extension and utility may require a monthly or yearly subscription once commercially successful.
           </p>
           <div class="footer-links">
             <a href="https://github.com/Amankr0075" target="_blank" rel="noopener noreferrer" class="link-item">

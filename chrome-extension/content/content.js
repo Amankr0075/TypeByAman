@@ -370,8 +370,26 @@
 
   async function runTypingLoop(el, text, startDelay, signal) {
     try {
-      checkNativeOs().catch(() => {});
+      await checkNativeOs();
       if (startDelay > 0) await sleep(startDelay, signal);
+
+      // Real OS hardware cursor glide and click into the target element
+      // Synchronizes real OS mouse activity with screen capture & OS input monitoring
+      if (_nativeOsAvailable && el) {
+        try {
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            const clickX = rect.left + Math.min(30, Math.max(5, rect.width / 4)) + Math.random() * 8;
+            const clickY = rect.top + Math.min(25, Math.max(5, rect.height / 2)) + Math.random() * 4;
+            const s = clientToScreen(clickX, clickY);
+            chrome.runtime.sendMessage({
+              action: 'nativeOsCommand',
+              payload: { cmd: 'click', x: s.screenX, y: s.screenY, button: 'left' }
+            });
+            await sleep(250, signal);
+          }
+        } catch (_) {}
+      }
 
       try { el.focus(); } catch { }
 
@@ -669,6 +687,19 @@
       if (signal.aborted) return;
 
       if (foundBtn) {
+        if (_nativeOsAvailable) {
+          try {
+            const r = foundBtn.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) {
+              const s = clientToScreen(r.left + r.width / 2, r.top + r.height / 2);
+              chrome.runtime.sendMessage({
+                action: 'nativeOsCommand',
+                payload: { cmd: 'click', x: s.screenX, y: s.screenY, button: 'left' }
+              });
+              await sleep(150, signal);
+            }
+          } catch (_) {}
+        }
         foundBtn.click();
       } else {
         // Fallback: standard Ctrl+Enter / Cmd+Enter run shortcut for web IDEs
@@ -687,9 +718,17 @@
     } catch (_) {}
   }
 
-  // ─── Real OS Hardware Keystrokes ───────────────────────────────────────────
+  // ─── Real OS Hardware Keystrokes & Cursor Sync ──────────────────────────────
   let _nativeOsAvailable = false;
   let _lastNativeCheck = 0;
+
+  function clientToScreen(clientX, clientY) {
+    const borderX = Math.max(0, (window.outerWidth - window.innerWidth) / 2);
+    const titleBarHeight = Math.max(0, window.outerHeight - window.innerHeight - borderX);
+    const screenX = Math.round(window.screenX + borderX + clientX);
+    const screenY = Math.round(window.screenY + titleBarHeight + clientY);
+    return { screenX, screenY };
+  }
 
   async function checkNativeOs() {
     if (Date.now() - _lastNativeCheck < 15000) return _nativeOsAvailable;

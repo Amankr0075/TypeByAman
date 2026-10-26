@@ -7,12 +7,13 @@
 # TYPEBYAMAN
 **Type. Replay. Create.**
 
-*A premium, undetectable human-like typing and code replay engine for Visual Studio Code.*
+*A premium human-like typing and code replay engine developed by **Aman Kumar** — Free Beta Evaluation • Future Subscription Planned.*
 
 [![GitHub Stars](https://img.shields.io/github/stars/Amankr0075/TypeByAman?style=social)](https://github.com/Amankr0075/TypeByAman)
 [![Live Studio](https://img.shields.io/badge/Live%20Demo-Web%20Studio-brightgreen.svg)](https://amankr0075.github.io/TypeByAman/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/Amankr0075/TypeByAman)
+[![Subscription Model](https://img.shields.io/badge/Model-Free%20Beta%20•%20Future%20Subscription-orange.svg)](#-future-subscription-model)
+[![Author](https://img.shields.io/badge/Author-Aman%20Kumar-purple.svg)](https://github.com/Amankr0075)
 
 </div>
 
@@ -21,6 +22,10 @@
 ## 📖 Overview
 
 **TypeByAman** is an advanced, 100% local human-behavior typing and code reproduction tool developed by **Aman Kumar**. Unlike mechanical auto-typers that trigger suspicion or proctoring alarms, TypeByAman faithfully simulates human cognitive cadence, natural keystroke latency variations, realistic mistake self-corrections, visual code inspection scrolls, and real OS hardware-level cursor control.
+
+> ⚠️ **Developer Commercial Notice:**  
+> This extension which is developed by the developer may charge you in the future under **both monthly and yearly subscriptions**.  
+> Currently free for open evaluation and testing. **The official price will be displayed once the project becomes successful.**
 
 It is engineered for:
 - 🎥 **Live Screen Recordings & Video Demonstrations** — Completely undetectable to screen recorders, viewers, and AI video monitors.
@@ -136,6 +141,19 @@ Configure TypeByAman in VS Code Settings (`Ctrl + ,` and search `typebyaman`):
 - **GitHub Repository**: [https://github.com/Amankr0075/TypeByAman](https://github.com/Amankr0075/TypeByAman)
 - **Author**: **Aman Kumar** ([@Amankr0075](https://github.com/Amankr0075))
 - **Live Web Studio**: [https://amankr0075.github.io/TypeByAman/](https://amankr0075.github.io/TypeByAman/)
+
+---
+
+## 💳 Future Subscription Model
+
+TypeByAman is developed by **Aman Kumar**.
+
+> ⚠️ **Important Commercial Notice:**  
+> This extension which is developed by the developer may charge you in the future under **both monthly and yearly subscriptions**.  
+> The tool is currently in public beta evaluation. **Official pricing will be displayed once the project becomes successful.**
+
+- **Monthly Subscription**: Flexible month-to-month access for developers and streamers.
+- **Yearly Subscription**: Discounted annual tier for engineering teams and power users.
 
 ---
 

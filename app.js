@@ -210,6 +210,7 @@ export function useGlassCounter(initialValue = 0, step = 1) {
     startDelaySec: 0,
     preserveIndentation: true,
     autoScroll: true,
+    humanTypoMode: true,
     timerStart: null,
     timerInterval: null,
     activeTimeout: null,
@@ -229,6 +230,7 @@ export function useGlassCounter(initialValue = 0, step = 1) {
     lineDelayNum: document.getElementById('line-delay-num'),
     startDelaySlider: document.getElementById('start-delay-slider'),
     startDelayNum: document.getElementById('start-delay-num'),
+    toggleHumanTypo: document.getElementById('toggle-human-typo'),
     toggleSound: document.getElementById('toggle-sound'),
     toggleIndent: document.getElementById('toggle-indent'),
     toggleAutoScroll: document.getElementById('toggle-auto-scroll'),
@@ -260,7 +262,20 @@ export function useGlassCounter(initialValue = 0, step = 1) {
     btnStep: document.getElementById('btn-step'),
     countdownDisplay: document.getElementById('countdown-display'),
     countdownVal: document.getElementById('countdown-val'),
-    btnJumpStudio: document.getElementById('btn-jump-studio')
+    btnJumpStudio: document.getElementById('btn-jump-studio'),
+    webApiKeyInput: document.getElementById('web-api-key-input'),
+    btnSaveWebKey: document.getElementById('btn-save-web-key'),
+    keyHintText: document.getElementById('key-hint-text'),
+    btnToggleKeyVisibility: document.getElementById('btn-toggle-key-visibility'),
+    aiCategorySelect: document.getElementById('ai-category-select'),
+    aiCustomPromptContainer: document.getElementById('ai-custom-prompt-container'),
+    aiCustomPromptInput: document.getElementById('ai-custom-prompt-input'),
+    btnGenerateAi: document.getElementById('btn-generate-ai'),
+    btnGenerateAiText: document.getElementById('btn-generate-ai-text'),
+    webOsBridgeCard: document.getElementById('web-os-bridge-card'),
+    webBridgeDot: document.getElementById('web-bridge-dot'),
+    webBridgeTitle: document.getElementById('web-bridge-title'),
+    webBridgeDesc: document.getElementById('web-bridge-desc'),
   };
 
   // --- Helper Functions ---
@@ -655,7 +670,271 @@ export function useGlassCounter(initialValue = 0, step = 1) {
     }
   });
 
+  // ─── Human Mistake Simulation Toggle ───
+  if (el.toggleHumanTypo) {
+    el.toggleHumanTypo.addEventListener('change', (e) => {
+      state.humanTypoMode = e.target.checked;
+    });
+  }
+
+  // ─── AI API Key Manager ───
+  const STORAGE_KEY_GROQ = 'typebyaman_groq_key';
+
+  function initApiKeyManager() {
+    if (!el.webApiKeyInput) return;
+    const savedKey = (localStorage.getItem(STORAGE_KEY_GROQ) || '').trim();
+    if (savedKey) {
+      el.webApiKeyInput.value = savedKey;
+      if (el.keyHintText) el.keyHintText.textContent = '✓ Groq API Key saved';
+    }
+
+    el.btnSaveWebKey?.addEventListener('click', () => {
+      const val = el.webApiKeyInput.value.trim();
+      if (val) {
+        localStorage.setItem(STORAGE_KEY_GROQ, val);
+        if (el.keyHintText) el.keyHintText.textContent = '✓ Groq API Key saved';
+      } else {
+        localStorage.removeItem(STORAGE_KEY_GROQ);
+        if (el.keyHintText) el.keyHintText.textContent = 'Key removed (using local fallback)';
+      }
+    });
+
+    el.btnToggleKeyVisibility?.addEventListener('click', () => {
+      const isPass = el.webApiKeyInput.type === 'password';
+      el.webApiKeyInput.type = isPass ? 'text' : 'password';
+      el.btnToggleKeyVisibility.textContent = isPass ? 'Hide' : 'Show';
+    });
+
+    el.aiCategorySelect?.addEventListener('change', () => {
+      if (el.aiCustomPromptContainer) {
+        el.aiCustomPromptContainer.style.display = el.aiCategorySelect.value === 'custom' ? 'block' : 'none';
+      }
+    });
+  }
+
+  // ─── AI Prompt & Code Generation Engine ───
+  const AI_FALLBACKS = {
+    algorithm: {
+      filename: 'quickSortOptimization.js',
+      text: `/**
+ * TypeByAman AI • Dual-Pivot QuickSort Engine
+ * Generated via TypeByAman Creative Engine
+ */
+function dualPivotQuickSort(arr, low = 0, high = arr.length - 1) {
+  if (low < high) {
+    if (arr[low] > arr[high]) [arr[low], arr[high]] = [arr[high], arr[low]];
+    let p = arr[low], q = arr[high];
+    let l = low + 1, g = high - 1, k = l;
+    while (k <= g) {
+      if (arr[k] < p) {
+        [arr[k], arr[l]] = [arr[l], arr[k]];
+        l++;
+      } else if (arr[k] >= q) {
+        while (arr[g] > q && k < g) g--;
+        [arr[k], arr[g]] = [arr[g], arr[k]];
+        g--;
+        if (arr[k] < p) {
+          [arr[k], arr[l]] = [arr[l], arr[k]];
+          l++;
+        }
+      }
+      k++;
+    }
+    l--; g++;
+    [arr[low], arr[l]] = [arr[l], arr[low]];
+    [arr[high], arr[g]] = [arr[g], arr[high]];
+    dualPivotQuickSort(arr, low, l - 1);
+    dualPivotQuickSort(arr, l + 1, g - 1);
+    dualPivotQuickSort(arr, g + 1, high);
+  }
+  return arr;
+}`
+    },
+    'python-ml': {
+      filename: 'transformer_attention.py',
+      text: `"""
+TypeByAman AI • Scaled Dot-Product Attention
+Author: Aman Kumar | Type. Replay. Create.
+"""
+import torch
+import torch.nn as nn
+import math
+
+class ScaledDotProductAttention(nn.Module):
+    def __init__(self, temperature: float, dropout: float = 0.1):
+        super().__init__()
+        self.temperature = temperature
+        self.dropout = nn.Dropout(dropout)
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, q, k, v, mask=None):
+        scores = torch.matmul(q / self.temperature, k.transpose(2, 3))
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+        attn = self.dropout(self.softmax(scores))
+        output = torch.matmul(attn, v)
+        return output, attn`
+    },
+    'react-ui': {
+      filename: 'CyberCard.jsx',
+      text: `import React, { useState } from 'react';
+
+export default function CyberCard({ title = "BEYOND THE HORIZON", category = "AI INTERACTION" }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div 
+      className="relative p-8 rounded-2xl border border-cyan-500/30 bg-slate-900/80 backdrop-blur-xl"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span className="text-xs uppercase tracking-widest text-cyan-400 font-bold">{category}</span>
+      <h2 className="text-2xl font-black text-white mt-2">{title}</h2>
+      <p className="text-slate-400 text-sm mt-3">Engineered for human authenticity and fluid execution.</p>
+    </div>
+  );
+}`
+    },
+    headline: {
+      filename: 'creative_headline.txt',
+      text: `THE ARCHITECTURE OF SILENCE\nBEYOND THE BOUNDARIES OF COMPUTATION\nCRAFTING THE FUTURE OF DIGITAL EXPRESSION`
+    },
+    quote: {
+      filename: 'quote.txt',
+      text: `"True simplicity is not the absence of clutter, but the mastery of intent in every stroke." — TypeByAman`
+    },
+    cta: {
+      filename: 'call_to_action.txt',
+      text: `EXPLORE COLLECTION →\nINITIALIZE REPLAY NOW\nUNLOCK CREATIVE CAPABILITIES`
+    }
+  };
+
+  async function generateAiContent() {
+    const category = el.aiCategorySelect?.value || 'algorithm';
+    const customPrompt = (el.aiCustomPromptInput?.value || '').trim();
+    const apiKey = (localStorage.getItem(STORAGE_KEY_GROQ) || '').trim();
+
+    if (el.btnGenerateAi) el.btnGenerateAi.disabled = true;
+    if (el.btnGenerateAiText) el.btnGenerateAiText.textContent = 'Generating with Llama 3...';
+
+    try {
+      if (apiKey) {
+        let prompt = '';
+        switch (category) {
+          case 'algorithm':
+            prompt = 'Write ONE clean, complete, modern JavaScript algorithm or data structure (e.g. A* search, LRU Cache, or Red-Black Tree) with concise comments. Output ONLY the code, no markdown, no backticks.';
+            break;
+          case 'python-ml':
+            prompt = 'Write ONE clean, authentic Python class for machine learning (e.g. self-attention, loss function, or dataset pipeline). Output ONLY the clean code.';
+            break;
+          case 'react-ui':
+            prompt = 'Write ONE modern React component with Tailwind/CSS classes showcasing state and interaction. Output ONLY valid JSX code.';
+            break;
+          case 'headline':
+            prompt = 'Write 3 punchy, ultra-modern bold design headlines in all uppercase. 2-5 words each.';
+            break;
+          case 'quote':
+            prompt = 'Write ONE profound, authentic quote about engineering, design, or architecture. 1 sentence.';
+            break;
+          case 'cta':
+            prompt = 'Write 3 high-converting, modern button call-to-actions with arrow glyphs (→).';
+            break;
+          default:
+            prompt = customPrompt || 'Write a modern, elegant coding snippet.';
+        }
+
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 6000);
+
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: 'You are an elite software architect and creative director. Output ONLY the raw code or text requested with zero markdown formatting and zero introductory chat.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 350,
+          })
+        });
+        clearTimeout(tid);
+
+        if (res.ok) {
+          const data = await res.json();
+          let generated = data.choices?.[0]?.message?.content?.trim() || '';
+          generated = generated.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+          if (generated) {
+            applyGeneratedText(generated, category);
+            return;
+          }
+        }
+      }
+    } catch (_) {
+      // Fallback seamlessly
+    } finally {
+      if (el.btnGenerateAi) el.btnGenerateAi.disabled = false;
+      if (el.btnGenerateAiText) el.btnGenerateAiText.textContent = 'Generate with AI & Load';
+    }
+
+    // High quality curated fallback if API offline or no key
+    const fallback = AI_FALLBACKS[category] || AI_FALLBACKS.algorithm;
+    applyGeneratedText(fallback.text, category, fallback.filename);
+  }
+
+  function applyGeneratedText(text, category, customFilename) {
+    state.currentText = text;
+    el.rawTextInput.value = text;
+    const names = {
+      algorithm: 'aiAlgorithm.js',
+      'python-ml': 'aiNeuralNet.py',
+      'react-ui': 'AiComponent.jsx',
+      headline: 'aiHeadlines.txt',
+      quote: 'aiQuote.txt',
+      cta: 'aiCallToAction.txt',
+      custom: 'aiCustomSnippet.js'
+    };
+    el.tabName.textContent = customFilename || names[category] || 'aiGenerated.js';
+    restartTyping();
+  }
+
+  // ─── Live OS Hardware Bridge Status Checker ───
+  function initWebBridgeChecker() {
+    async function check() {
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 1200);
+        const res = await fetch('http://127.0.0.1:9876/ping', { signal: ctrl.signal });
+        clearTimeout(tid);
+        const data = await res.json();
+        if (data && data.ok) {
+          if (el.webOsBridgeCard) el.webOsBridgeCard.className = 'os-bridge-card online';
+          if (el.webBridgeDot) el.webBridgeDot.className = 'bridge-status-dot online';
+          if (el.webBridgeTitle) el.webBridgeTitle.textContent = 'OS Hardware Bridge: ACTIVE';
+          if (el.webBridgeDesc) el.webBridgeDesc.textContent = 'Native Helper connected on port 9876. Keystrokes & mouse cursor are synced with OS hardware.';
+          return;
+        }
+      } catch (_) { }
+
+      if (el.webOsBridgeCard) el.webOsBridgeCard.className = 'os-bridge-card offline';
+      if (el.webBridgeDot) el.webBridgeDot.className = 'bridge-status-dot offline';
+      if (el.webBridgeTitle) el.webBridgeTitle.textContent = 'OS Hardware Bridge: OFFLINE';
+      if (el.webBridgeDesc) el.webBridgeDesc.textContent = 'Press Win + R and type "start" to launch the silent native hardware helper.';
+    }
+
+    check();
+    setInterval(check, 5000);
+  }
+
+  el.btnGenerateAi?.addEventListener('click', generateAiContent);
+
   // Init
+  initApiKeyManager();
+  initWebBridgeChecker();
   el.rawTextInput.value = state.currentText;
   renderView();
   updateStatus('idle');

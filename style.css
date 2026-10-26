@@ -1419,3 +1419,406 @@ kbd {
     display: none;
   }
 }
+
+/* ==========================================================================
+   TypeByAman — Announcement Bar, OS Bridge & AI Engine Components
+   ========================================================================== */
+
+/* Top Announcement Bar */
+.announcement-bar {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.18) 0%, rgba(6, 182, 212, 0.18) 100%);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-main);
+  position: relative;
+  z-index: 101;
+}
+
+.announcement-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.announcement-pill {
+  background: var(--gradient-primary);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.announcement-text {
+  color: var(--text-muted);
+}
+
+.announcement-text strong {
+  color: var(--text-main);
+}
+
+.announcement-link {
+  color: var(--accent-cyan);
+  text-decoration: underline;
+  font-weight: 600;
+  font-size: 11.5px;
+  transition: var(--transition);
+}
+
+.announcement-link:hover {
+  color: #fff;
+}
+
+/* OS Bridge Card in Web Studio */
+.os-bridge-card {
+  background: rgba(13, 17, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  transition: var(--transition);
+}
+
+.os-bridge-card.online {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.os-bridge-card.offline {
+  border-color: rgba(244, 63, 94, 0.3);
+  background: rgba(244, 63, 94, 0.05);
+}
+
+.bridge-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.bridge-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+
+.bridge-status-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+}
+
+.bridge-status-dot.offline {
+  background: #f43f5e;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.6);
+}
+
+.bridge-status-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+
+.bridge-card-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.bridge-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bridge-shortcut-badge {
+  font-size: 10px;
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.1);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+/* AI Studio Card & API Key Inputs */
+.ai-studio-card {
+  background: rgba(18, 22, 38, 0.85);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.ai-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ai-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.ai-title-wrap svg {
+  color: var(--accent-purple);
+}
+
+.ai-badge-model {
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--accent-purple);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-family: var(--font-mono);
+}
+
+.ai-key-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.form-input-sm {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-main);
+  outline: none;
+  transition: var(--transition);
+}
+
+.form-input-sm:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 10px var(--accent-purple-glow);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+}
+
+.btn-accent {
+  background: var(--gradient-primary);
+  color: #fff;
+}
+
+.btn-accent:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.key-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.btn-link-xs {
+  background: none;
+  border: none;
+  color: var(--accent-cyan);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.ai-prompt-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.select-sm {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.btn-ai-generate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--gradient-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 14px var(--accent-purple-glow);
+}
+
+.btn-ai-generate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px var(--accent-purple-glow);
+}
+
+.btn-ai-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Pricing & Commercial Notice Section */
+.pricing-section {
+  padding: 80px 0;
+  position: relative;
+}
+
+.pricing-banner-card {
+  background: radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 60%),
+              radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 60%),
+              rgba(18, 22, 34, 0.85);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  box-shadow: var(--shadow-card);
+}
+
+.pricing-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 36px auto;
+}
+
+.pricing-badge-pill {
+  display: inline-block;
+  padding: 4px 14px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: var(--accent-purple);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 30px;
+}
+
+.pricing-plan-card {
+  background: rgba(13, 17, 26, 0.7);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  transition: var(--transition);
+}
+
+.pricing-plan-card:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  transform: translateY(-2px);
+}
+
+.pricing-plan-card.featured {
+  border-color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.plan-type {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.plan-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-main);
+}
+
+.plan-price-tag {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.plan-price-tag strong {
+  font-size: 22px;
+  color: var(--text-main);
+}
+
+.plan-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  flex: 1;
+}
+
+.plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-features li::before {
+  content: '✓';
+  color: var(--accent-emerald);
+  font-weight: 700;
+}
+
+.pricing-disclaimer-box {
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 3px solid var(--accent-purple);
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.pricing-disclaimer-box strong {
+  color: var(--text-main);
+}
