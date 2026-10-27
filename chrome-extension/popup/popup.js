@@ -100,6 +100,14 @@ async function init() {
   updateUI();
   syncWithContentScript();
   checkNativeBridgeStatus();
+
+  // Instant platform detection on active tab switch
+  try {
+    chrome.tabs.onActivated.addListener(() => detectDesignPlatform());
+    chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+      if (changeInfo.url || changeInfo.status === 'complete') detectDesignPlatform();
+    });
+  } catch (_) { }
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -223,6 +231,10 @@ function switchTab(tabName) {
     panel.style.display = isActive ? 'block' : 'none';
     panel.classList.toggle('active', isActive);
   });
+  if (tabName === 'design') {
+    detectDesignPlatform();
+    syncDesignStatus();
+  }
   if (tabName === 'remote' && currentRemoteUrl) {
     renderQRCode(currentRemoteUrl);
   }
@@ -927,6 +939,23 @@ function formatTime(ms) {
 
 async function sendDesignCmd(cmd) {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  // If active tab is internal (e.g. chrome://, chrome-extension://), find any open web/design tab
+  if (!tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+    const allTabs = await chrome.tabs.query({});
+    const isDesign = (u) => {
+      if (!u) return false;
+      const l = u.toLowerCase();
+      return l.includes('canva.com') || l.includes('figma.com') || l.includes('adobe.com') ||
+        l.includes('photopea.com') || l.includes('pixlr.com') || l.includes('picsart.com') ||
+        l.includes('penpot.app') || l.includes('framer.com') || l.includes('webflow.com') ||
+        l.includes('miro.com') || l.includes('excalidraw.com') || l.includes('polotno.com') ||
+        l.includes('spline.design') || l.includes('kittl.com');
+    };
+    const designTab = allTabs.find(t => isDesign(t.url));
+    const anyWebTab = allTabs.find(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'));
+    tab = designTab || anyWebTab || tab;
+  }
   if (!tab?.id) return;
 
   const payload = {
@@ -976,7 +1005,9 @@ async function sendDesignCmd(cmd) {
           target: { tabId: tab.id },
           files: ['content/design-engine.js'],
         });
-        chrome.tabs.sendMessage(tab.id, payload);
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tab.id, payload).catch(() => { });
+        }, 50);
       } catch (_) {
         // Fallback postMessage
         try {
@@ -1111,49 +1142,73 @@ async function syncDesignStatus() {
   } catch (_) { }
 }
 
+function matchPlatformUrl(urlStr, title = '') {
+  if (!urlStr) return null;
+  try {
+    const url = new URL(urlStr);
+    const host = url.hostname.toLowerCase();
+    const path = url.pathname.toLowerCase();
+    const t = (title || '').toLowerCase();
+    if (host.includes('canva.com') || t.includes('canva')) return 'Canva';
+    if (host.includes('figma.com') || t.includes('figma')) return 'Figma';
+    if (host.includes('express.adobe') || host.includes('adobeexpress') || (host.includes('adobe.com') && path.includes('express'))) return 'Adobe Express';
+    if (host.includes('photoshop.adobe') || (host.includes('adobe.com') && path.includes('photoshop')) || t.includes('photoshop')) return 'Photoshop Web';
+    if (host.includes('illustrator.adobe') || (host.includes('adobe.com') && path.includes('illustrator'))) return 'Illustrator Web';
+    if (host.includes('photopea.com') || t.includes('photopea')) return 'Photopea';
+    if (host.includes('pixlr.com') || t.includes('pixlr')) return 'Pixlr';
+    if (host.includes('picsart.com') || t.includes('picsart')) return 'Picsart';
+    if (host.includes('penpot.app') || t.includes('penpot')) return 'Penpot';
+    if (host.includes('framer.com')) return 'Framer';
+    if (host.includes('webflow.com')) return 'Webflow';
+    if (host.includes('spline.design')) return 'Spline 3D';
+    if (host.includes('womp.com')) return 'Womp 3D';
+    if (host.includes('kittl.com')) return 'Kittl';
+    if (host.includes('visme.co')) return 'Visme';
+    if (host.includes('desygner.com')) return 'Desygner';
+    if (host.includes('snappa.com')) return 'Snappa';
+    if (host.includes('creatopy.com')) return 'Creatopy';
+    if (host.includes('lucid.app') || host.includes('lucidchart.com')) return 'Lucidchart';
+    if (host.includes('vectr.com')) return 'Vectr';
+    if (host.includes('gravit.io') || host.includes('corelvector')) return 'Corel Vector';
+    if (host.includes('miro.com')) return 'Miro';
+    if (host.includes('excalidraw.com')) return 'Excalidraw';
+    if (host.includes('tldraw.com')) return 'tldraw';
+    if (host.includes('polotno.com')) return 'Polotno Studio';
+    if (host.includes('draw.io') || host.includes('diagrams.net')) return 'Diagrams.net';
+  } catch (_) { }
+  return null;
+}
+
 async function detectDesignPlatform() {
   if (!designUI.platformValue) return;
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab) {
-      designUI.platformValue.textContent = 'Web Editor';
-      return;
+
+    // 1. Direct 0ms URL match on current tab
+    if (tab?.url) {
+      const match = matchPlatformUrl(tab.url, tab.title);
+      if (match) {
+        designUI.platformValue.textContent = match;
+        return;
+      }
     }
 
-    let detectedName = null;
-    if (tab.url) {
-      try {
-        const url = new URL(tab.url);
-        const host = url.hostname.toLowerCase();
-        const path = url.pathname.toLowerCase();
-        if (host.includes('canva.com')) detectedName = 'Canva';
-        else if (host.includes('figma.com')) detectedName = 'Figma';
-        else if (host.includes('express.adobe') || host.includes('adobeexpress') || (host.includes('adobe.com') && path.includes('express'))) detectedName = 'Adobe Express';
-        else if (host.includes('photoshop.adobe')) detectedName = 'Photoshop Web';
-        else if (host.includes('illustrator.adobe')) detectedName = 'Illustrator Web';
-        else if (host.includes('photopea.com')) detectedName = 'Photopea';
-        else if (host.includes('picsart.com')) detectedName = 'Picsart';
-        else if (host.includes('pixlr.com')) detectedName = 'Pixlr';
-        else if (host.includes('penpot.app')) detectedName = 'Penpot';
-        else if (host.includes('framer.com')) detectedName = 'Framer';
-        else if (host.includes('webflow.com')) detectedName = 'Webflow';
-        else if (host.includes('vectr.com')) detectedName = 'Vectr';
-        else if (host.includes('gravit.io') || host.includes('corelvector')) detectedName = 'Corel Vector';
-        else if (host.includes('miro.com')) detectedName = 'Miro';
-        else if (host.includes('excalidraw.com')) detectedName = 'Excalidraw';
-        else if (host.includes('polotno.com')) detectedName = 'Polotno Studio';
-      } catch (_) { }
+    // 2. If current tab is internal, check other open tabs for design apps
+    if (!tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+      const allTabs = await chrome.tabs.query({});
+      for (const t of allTabs) {
+        const m = matchPlatformUrl(t.url, t.title);
+        if (m) {
+          designUI.platformValue.textContent = m;
+          return;
+        }
+      }
     }
 
-    if (detectedName) {
-      designUI.platformValue.textContent = detectedName;
-      return;
-    }
-
-    // Fast check with content script
-    if (tab.id) {
+    // 3. Fast check with content script
+    if (tab?.id && !tab.url?.startsWith('chrome://') && !tab.url?.startsWith('chrome-extension://')) {
       chrome.tabs.sendMessage(tab.id, { action: 'designGetStatus' }, (res) => {
-        if (!chrome.runtime.lastError && res?.platform) {
+        if (!chrome.runtime.lastError && res?.platform && res.platform !== 'unknown') {
           designUI.platformValue.textContent = res.platform;
         } else {
           designUI.platformValue.textContent = 'Web Editor';

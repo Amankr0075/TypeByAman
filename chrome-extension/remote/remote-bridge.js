@@ -286,25 +286,96 @@ class RemoteControlBridge {
   }
 
   /**
-   * Find active webpage tab even if Chrome window is not currently focused
+   * Fast, synchronous platform detector from tab URL and title
+   */
+  _detectPlatformFromUrl(urlStr, title = '') {
+    if (!urlStr) return 'Web Editor';
+    try {
+      const url = new URL(urlStr);
+      const host = url.hostname.toLowerCase();
+      const path = url.pathname.toLowerCase();
+      const t = (title || '').toLowerCase();
+
+      if (host.includes('canva.com') || t.includes('canva')) return 'Canva';
+      if (host.includes('figma.com') || t.includes('figma')) return 'Figma';
+      if (host.includes('express.adobe') || host.includes('adobeexpress') || (host.includes('adobe.com') && path.includes('express'))) return 'Adobe Express';
+      if (host.includes('photoshop.adobe') || (host.includes('adobe.com') && path.includes('photoshop')) || t.includes('photoshop')) return 'Photoshop Web';
+      if (host.includes('illustrator.adobe') || (host.includes('adobe.com') && path.includes('illustrator'))) return 'Illustrator Web';
+      if (host.includes('photopea.com') || t.includes('photopea')) return 'Photopea';
+      if (host.includes('pixlr.com') || t.includes('pixlr')) return 'Pixlr';
+      if (host.includes('picsart.com') || t.includes('picsart')) return 'Picsart';
+      if (host.includes('penpot.app') || t.includes('penpot')) return 'Penpot';
+      if (host.includes('framer.com')) return 'Framer';
+      if (host.includes('webflow.com')) return 'Webflow';
+      if (host.includes('spline.design')) return 'Spline 3D';
+      if (host.includes('womp.com')) return 'Womp 3D';
+      if (host.includes('kittl.com')) return 'Kittl';
+      if (host.includes('visme.co')) return 'Visme';
+      if (host.includes('desygner.com')) return 'Desygner';
+      if (host.includes('snappa.com')) return 'Snappa';
+      if (host.includes('creatopy.com')) return 'Creatopy';
+      if (host.includes('lucid.app') || host.includes('lucidchart.com')) return 'Lucidchart';
+      if (host.includes('vectr.com')) return 'Vectr';
+      if (host.includes('gravit.io') || host.includes('corelvector.com')) return 'Corel Vector';
+      if (host.includes('miro.com')) return 'Miro';
+      if (host.includes('excalidraw.com')) return 'Excalidraw';
+      if (host.includes('tldraw.com')) return 'tldraw';
+      if (host.includes('polotno.com')) return 'Polotno Studio';
+      if (host.includes('draw.io') || host.includes('diagrams.net')) return 'Diagrams.net';
+    } catch (_) {}
+    return 'Web Editor';
+  }
+
+  /**
+   * Find target design tab with high intelligence:
+   * 1. Check if user already has an active tab on a design platform (Canva, Figma, etc.)
+   * 2. If not, scan all open tabs across all windows for any design platform!
+   * 3. Exclude internal tabs (chrome://, chrome-extension://, remote.html)
    */
   async _getTargetTab() {
     try {
-      // 1. Try active tab in last focused window
+      const isDesignUrl = (u) => {
+        if (!u) return false;
+        const low = u.toLowerCase();
+        return low.includes('canva.com') || low.includes('figma.com') || low.includes('adobe.com') ||
+               low.includes('photopea.com') || low.includes('pixlr.com') || low.includes('picsart.com') ||
+               low.includes('penpot.app') || low.includes('framer.com') || low.includes('webflow.com') ||
+               low.includes('miro.com') || low.includes('excalidraw.com') || low.includes('tldraw.com') ||
+               low.includes('polotno.com') || low.includes('kittl.com') || low.includes('spline.design') ||
+               low.includes('visme.co') || low.includes('desygner.com') || low.includes('snappa.com');
+      };
+
+      const isInternalUrl = (u) => {
+        if (!u) return true;
+        const low = u.toLowerCase();
+        return low.startsWith('chrome://') || low.startsWith('chrome-extension://') ||
+               low.startsWith('edge://') || low.startsWith('about:') || low.includes('remote.html');
+      };
+
+      // 1. Try active tab in last focused window first
       const focusedTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
       if (focusedTabs && focusedTabs.length > 0 && focusedTabs[0].id) {
         const t = focusedTabs[0];
-        if (!t.url?.startsWith('chrome://') && !t.url?.startsWith('chrome-extension://')) {
+        if (!isInternalUrl(t.url)) {
           return t;
         }
       }
-      // 2. Try any active tab across all windows
+
+      // 2. Scan all tabs across all windows for a known design tool tab
+      const allTabs = await chrome.tabs.query({});
+      const designTab = allTabs.find(t => isDesignUrl(t.url));
+      if (designTab) return designTab;
+
+      // 3. Any active tab across all windows
       const activeTabs = await chrome.tabs.query({ active: true });
-      if (activeTabs && activeTabs.length > 0) {
-        const candidate = activeTabs.find(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'));
-        if (candidate) return candidate;
-        return activeTabs[0];
-      }
+      const candidate = activeTabs.find(t => !isInternalUrl(t.url));
+      if (candidate) return candidate;
+
+      // 4. Any valid webpage tab
+      const anyWebTab = allTabs.find(t => !isInternalUrl(t.url));
+      if (anyWebTab) return anyWebTab;
+
+      return (focusedTabs && focusedTabs[0]) || (allTabs && allTabs[0]) || null;
     } catch (_) {}
     return null;
   }
@@ -353,20 +424,58 @@ class RemoteControlBridge {
       return;
     }
 
-    // ── Design Mode Commands ──
-    if (data.action === 'designCmd' || data.action === 'designGetStatus') {
+    // ── Design Mode Commands (Optimistic 0ms Latency Response + Reliable Tab Injection) ──
+    if (data.action === 'designCmd') {
       const tab = await this._getTargetTab();
+      const detectedPlatform = tab?.url ? this._detectPlatformFromUrl(tab.url, tab.title) : 'Web Editor';
+
+      // 1. Instantly broadcast state change back to phone (Zero MQTT/UI lag!)
+      if (data.cmd === 'start') {
+        this.broadcastStatus({
+          action: 'designStatus',
+          detail: {
+            state: 'running',
+            platform: detectedPlatform,
+            elapsed: 0,
+            remaining: data.duration || 3600000,
+            pct: 0,
+            totalActions: 0,
+            lastAction: 'Initializing autonomous design…',
+            cursorSpeed: data.cursorSpeed || 'normal',
+            operationSpeed: data.operationSpeed || 'normal',
+          }
+        });
+      } else if (data.cmd === 'pause') {
+        this.broadcastStatus({
+          action: 'designStatus',
+          detail: { state: 'paused', platform: detectedPlatform }
+        });
+      } else if (data.cmd === 'resume') {
+        this.broadcastStatus({
+          action: 'designStatus',
+          detail: { state: 'running', platform: detectedPlatform }
+        });
+      } else if (data.cmd === 'stop') {
+        this.broadcastStatus({
+          action: 'designStatus',
+          detail: { state: 'stopped', platform: detectedPlatform, totalActions: 0, pct: 0, elapsed: 0 }
+        });
+      }
+
+      // 2. Dispatch to the target design tab
       if (tab?.id) {
         try {
           await chrome.tabs.sendMessage(tab.id, data);
         } catch (_) {
-          // Fallback to ensuring script is loaded
+          // If content script was not yet present, inject and resend immediately
           try {
             await chrome.scripting.executeScript({
               target: { tabId: tab.id },
               files: ['content/design-engine.js'],
             });
-            await chrome.tabs.sendMessage(tab.id, data);
+            setTimeout(() => {
+              chrome.tabs.sendMessage(tab.id, data).catch(() => {});
+            }, 60);
           } catch (_) {
             try {
               await chrome.scripting.executeScript({
@@ -383,6 +492,31 @@ class RemoteControlBridge {
           }
         }
       }
+      return;
+    }
+
+    if (data.action === 'designGetStatus') {
+      const tab = await this._getTargetTab();
+      const detectedPlatform = tab?.url ? this._detectPlatformFromUrl(tab.url, tab.title) : 'Web Editor';
+      let dStatus = {
+        running: false,
+        paused: false,
+        elapsed: 0,
+        remaining: 3600000,
+        pct: 0,
+        totalActions: 0,
+        platform: detectedPlatform,
+        lastAction: 'Ready',
+        cursorSpeed: 1.0,
+        operationSpeed: 1.0,
+      };
+      if (tab?.id) {
+        try {
+          const res = await chrome.tabs.sendMessage(tab.id, data);
+          if (res) dStatus = { ...dStatus, ...res };
+        } catch (_) {}
+      }
+      this.broadcastStatus({ action: 'designStatus', detail: dStatus });
       return;
     }
 
@@ -419,8 +553,20 @@ class RemoteControlBridge {
   async _collectFullState() {
     return new Promise(async (resolve) => {
       const tab = await this._getTargetTab();
+      const detectedPlatform = tab?.url ? this._detectPlatformFromUrl(tab.url, tab.title) : 'Web Editor';
       let typingStatus = { status: 'idle', charIndex: 0, totalChars: 0 };
-      let designStatus = { running: false, paused: false, elapsed: 0, remaining: 3600000, pct: 0, totalActions: 0, platform: 'Detecting...', lastAction: '—', cursorSpeed: 1.0, operationSpeed: 1.0 };
+      let designStatus = {
+        running: false,
+        paused: false,
+        elapsed: 0,
+        remaining: 3600000,
+        pct: 0,
+        totalActions: 0,
+        platform: detectedPlatform, // IMMEDIATELY DETECTED! Never 'Detecting...'
+        lastAction: 'Ready',
+        cursorSpeed: 1.0,
+        operationSpeed: 1.0
+      };
 
       if (tab?.id) {
         try {
@@ -430,7 +576,12 @@ class RemoteControlBridge {
 
         try {
           const dRes = await chrome.tabs.sendMessage(tab.id, { action: 'designGetStatus' });
-          if (dRes) designStatus = dRes;
+          if (dRes) {
+            designStatus = { ...designStatus, ...dRes };
+            if (!designStatus.platform || designStatus.platform === 'unknown' || designStatus.platform === 'Detecting...') {
+              designStatus.platform = detectedPlatform;
+            }
+          }
         } catch (_) {}
       }
 

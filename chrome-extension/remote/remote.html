@@ -2454,6 +2454,12 @@
       });
 
       document.getElementById('btn-design-start').addEventListener('click', () => {
+        vibrate(25);
+        updateDesignUI({
+          state: 'running',
+          platform: document.getElementById('design-platform').textContent || 'Web Editor',
+          lastAction: 'Starting autonomous design…'
+        });
         client.publish(cmdTopic, {
           action: 'designCmd',
           cmd: 'start',
@@ -2465,16 +2471,22 @@
       });
 
       document.getElementById('btn-design-pause').addEventListener('click', () => {
+        vibrate(20);
+        updateDesignUI({ state: 'paused' });
         client.publish(cmdTopic, { action: 'designCmd', cmd: 'pause' });
         showToast('⏸ Sent: Pause Design Mode');
       });
 
       document.getElementById('btn-design-resume').addEventListener('click', () => {
+        vibrate(20);
+        updateDesignUI({ state: 'running' });
         client.publish(cmdTopic, { action: 'designCmd', cmd: 'resume' });
         showToast('▶ Sent: Resume Design Mode');
       });
 
       document.getElementById('btn-design-stop').addEventListener('click', () => {
+        vibrate(30);
+        updateDesignUI({ state: 'stopped', elapsed: 0, pct: 0 });
         client.publish(cmdTopic, { action: 'designCmd', cmd: 'stop' });
         showToast('⏹ Sent: Stop Design Mode');
       });
