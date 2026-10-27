@@ -49,52 +49,63 @@
   };
 
   function parseSpeed(val, defaultVal = 1.0) {
-    if (typeof val === 'number' && !isNaN(val)) return Math.max(0.2, Math.min(5.0, val));
+    if (typeof val === 'number' && !isNaN(val)) return Math.max(0.4, Math.min(8.0, val));
     if (typeof val === 'string') {
       const s = val.toLowerCase().trim();
-      if (s === 'slow' || s === 'very slow') return 0.6;
-      if (s === 'normal') return 1.0;
-      if (s === 'fast') return 1.8;
-      if (s === 'very-fast' || s === 'very fast' || s === 'turbo') return 2.8;
+      if (s === 'slow' || s === 'very slow') return 0.8;
+      if (s === 'normal') return 1.8; // Snappy, lively fast baseline
+      if (s === 'fast') return 3.2;   // Fast-forward acceleration
+      if (s === 'very-fast' || s === 'very fast' || s === 'turbo') return 5.5; // Turbo fast-forward
       const num = parseFloat(s);
-      if (!isNaN(num) && num > 0) return Math.max(0.2, Math.min(5.0, num));
+      if (!isNaN(num) && num > 0) return Math.max(0.4, Math.min(8.0, num));
     }
     return defaultVal;
   }
 
   function getCursorMult() {
-    return Math.max(0.3, parseSpeed(designState.cursorSpeed, 1.0));
+    return Math.max(0.4, parseSpeed(designState.cursorSpeed, 1.8));
   }
 
   function getOpMult() {
-    return Math.max(0.3, parseSpeed(designState.operationSpeed, 1.0));
+    return Math.max(0.4, parseSpeed(designState.operationSpeed, 1.8));
   }
 
   // ─── Platform Detection ─────────────────────────────────────────────────────
 
   function detectPlatform() {
-    const host = (location.hostname || '').toLowerCase();
-    const path = (location.pathname || '').toLowerCase();
-    const title = (document.title || '').toLowerCase();
+    const loc = typeof window !== 'undefined' ? window.location : (typeof location !== 'undefined' ? location : {});
+    const host = ((loc && loc.hostname) || '').toLowerCase();
+    const path = ((loc && loc.pathname) || '').toLowerCase();
+    const title = (typeof document !== 'undefined' && document.title ? document.title : '').toLowerCase();
 
-    if (host.includes('canva.com')) return 'Canva';
-    if (host.includes('figma.com')) return 'Figma';
+    if (host.includes('canva.com') || title.includes('canva')) return 'Canva';
+    if (host.includes('figma.com') || title.includes('figma')) return 'Figma';
     if (host.includes('express.adobe') || host.includes('adobeexpress') || (host.includes('adobe.com') && path.includes('express'))) return 'Adobe Express';
-    if (host.includes('photoshop.adobe')) return 'Photoshop Web';
-    if (host.includes('illustrator.adobe')) return 'Illustrator Web';
+    if (host.includes('photoshop.adobe') || (host.includes('adobe.com') && path.includes('photoshop')) || title.includes('photoshop')) return 'Photoshop Web';
+    if (host.includes('illustrator.adobe') || (host.includes('adobe.com') && path.includes('illustrator'))) return 'Illustrator Web';
     if (host.includes('photopea.com') || title.includes('photopea')) return 'Photopea';
-    if (host.includes('pixlr.com')) return 'Pixlr';
-    if (host.includes('picsart.com')) return 'Picsart';
-    if (host.includes('penpot.app')) return 'Penpot';
+    if (host.includes('pixlr.com') || title.includes('pixlr')) return 'Pixlr';
+    if (host.includes('picsart.com') || title.includes('picsart')) return 'Picsart';
+    if (host.includes('penpot.app') || title.includes('penpot')) return 'Penpot';
     if (host.includes('framer.com')) return 'Framer';
     if (host.includes('webflow.com')) return 'Webflow';
+    if (host.includes('spline.design')) return 'Spline 3D';
+    if (host.includes('womp.com')) return 'Womp 3D';
+    if (host.includes('kittl.com')) return 'Kittl';
+    if (host.includes('visme.co')) return 'Visme';
+    if (host.includes('desygner.com')) return 'Desygner';
+    if (host.includes('snappa.com')) return 'Snappa';
+    if (host.includes('creatopy.com')) return 'Creatopy';
+    if (host.includes('lucid.app') || host.includes('lucidchart.com')) return 'Lucidchart';
     if (host.includes('vectr.com')) return 'Vectr';
     if (host.includes('gravit.io') || host.includes('corelvector')) return 'Corel Vector';
     if (host.includes('miro.com')) return 'Miro';
     if (host.includes('excalidraw.com')) return 'Excalidraw';
+    if (host.includes('tldraw.com')) return 'tldraw';
     if (host.includes('polotno.com')) return 'Polotno Studio';
+    if (host.includes('draw.io') || host.includes('diagrams.net')) return 'Diagrams.net';
 
-    if (document.querySelector('canvas, [data-testid*="canvas"], [class*="canvas"], [class*="artboard"], .stage')) {
+    if (document.querySelector('canvas, [data-testid*="canvas"], [class*="canvas"], [class*="artboard"], .stage, svg.stage')) {
       return 'Canvas Studio';
     }
     return 'Web Editor';
@@ -246,6 +257,7 @@
   let _pointerEl = null;
   let _dragHaloEl = null;
   let _styleEl = null;
+  let _physicalMouseMoveHandler = null;
   // ─── Real OS Hardware Integration ───────────────────────────────────────────
   let _nativeOsAvailable = false;
   let _lastNativeCheck = 0;
@@ -287,9 +299,10 @@
    * If offline or no API key, seamlessly falls back to the curated designer dictionary.
    */
   async function getCreativeCopy(category, fallbackList) {
+    const fallback = pick(fallbackList || ['CREATIVE EXCELLENCE', 'DESIGN BEYOND BOUNDARIES', 'NEXT-GEN STUDIO']);
     try {
       const resp = await new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(null), 3500);
+        const timer = setTimeout(() => resolve(null), 250);
         chrome.runtime.sendMessage(
           { action: 'getAiCreativeCopy', category, platform: designState.platform },
           (response) => {
@@ -302,7 +315,7 @@
         return resp.text.trim();
       }
     } catch (_) { }
-    return pick(fallbackList || ['CREATIVE EXCELLENCE']);
+    return fallback;
   }
 
   function initCursorOverlay() {
@@ -404,8 +417,8 @@
         to   { transform: translate(-50%, -50%) scale(1.3);  opacity: 1; }
       }
     `;
-    (document.head || document.documentElement).appendChild(_styleEl);
-    document.documentElement.classList.add('tba-design-active');
+    (document.head || document.documentElement || document.body)?.appendChild(_styleEl);
+    (document.documentElement || document.body)?.classList?.add?.('tba-design-active');
 
     // 2. Inject single virtual cursor container strictly into documentElement
     _cursorContainer = document.createElement('div');
@@ -420,7 +433,7 @@
       </svg>
     `;
     _cursorContainer.appendChild(_pointerEl);
-    document.documentElement.appendChild(_cursorContainer);
+    (document.documentElement || document.body)?.appendChild(_cursorContainer);
 
     renderCursorPosition(_cursorX, _cursorY, false);
 
@@ -435,7 +448,7 @@
   }
 
   function destroyCursorOverlay() {
-    document.documentElement.classList.remove('tba-design-active');
+    (document.documentElement || document.body)?.classList?.remove?.('tba-design-active');
     if (_styleEl && _styleEl.parentNode) _styleEl.parentNode.removeChild(_styleEl);
     _styleEl = null;
 
@@ -602,17 +615,16 @@
 
     const cMult = getCursorMult();
 
-    // Natural human designer pacing scaled by cursorSpeed multiplier
-    // Normal (1.0x): 240ms–580ms for typical moves; Fast (1.8x): ~140ms–320ms; Very Fast (2.8x): ~80ms–190ms
+    // Natural human designer pacing scaled by cursorSpeed multiplier (Fast-Forward Optimized)
     const rawDuration = options.fast
-      ? rand(150, 280)
-      : Math.round(240 + Math.pow(dist, 0.54) * randf(9, 16) + rand(50, 140));
-    const baseDuration = Math.max(50, Math.round(rawDuration / cMult));
+      ? rand(50, 110)
+      : Math.round(90 + Math.pow(dist, 0.44) * randf(4, 8) + rand(20, 50));
+    const baseDuration = Math.max(20, Math.round(rawDuration / cMult));
 
     // Steps adapted to speed for fluid rendering without lag
-    const maxSteps = cMult > 2.0 ? 40 : (cMult > 1.3 ? 60 : 90);
-    const minSteps = cMult > 2.0 ? 10 : 16;
-    const steps = Math.max(minSteps, Math.min(maxSteps, Math.floor(dist / (3.2 * Math.sqrt(cMult)))));
+    const maxSteps = cMult > 2.0 ? 18 : (cMult > 1.3 ? 28 : 45);
+    const minSteps = cMult > 2.0 ? 6 : 10;
+    const steps = Math.max(minSteps, Math.min(maxSteps, Math.floor(dist / (4.5 * Math.sqrt(cMult)))));
 
     // Curved Bezier trajectory with natural human curvature
     const curvature = randf(0.08, 0.22) * (Math.random() < 0.5 ? 1 : -1);
@@ -620,11 +632,11 @@
     const midY = (fromY + toY) / 2;
     const normalX = -(toY - fromY) / (dist || 1);
     const normalY = (toX - fromX) / (dist || 1);
-    const cpX = midX + normalX * dist * curvature + randf(-6, 6);
-    const cpY = midY + normalY * dist * curvature + randf(-6, 6);
+    const cpX = midX + normalX * dist * curvature + randf(-4, 4);
+    const cpY = midY + normalY * dist * curvature + randf(-4, 4);
 
     // Dynamic velocity persona for this stroke to ensure zero predictability:
-    const rhythmType = pick(['bell', 'front-loaded', 'back-loaded', 'hesitant']);
+    const rhythmType = pick(['bell', 'front-loaded', 'back-loaded']);
     const speedSineFreq = randf(2.0, 4.5);
     const speedSineAmp = randf(0.18, 0.36);
 
@@ -641,15 +653,13 @@
         v = Math.sin(Math.pow(t, 0.75) * Math.PI);
       } else if (rhythmType === 'back-loaded') {
         v = Math.sin(Math.pow(t, 1.35) * Math.PI);
-      } else if (rhythmType === 'hesitant' && t > 0.35 && t < 0.65) {
-        v = Math.max(0.25, Math.sin(t * Math.PI) * 0.6);
       } else {
         v = Math.sin(t * Math.PI);
       }
 
       // Smooth step easing with sinusoidal variation (never constant velocity)
       const tEased = (1 - Math.cos(t * Math.PI)) / 2;
-      const microJitter = randf(-0.5, 0.5);
+      const microJitter = randf(-0.3, 0.3);
       const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX + microJitter;
       const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY + microJitter;
 
@@ -660,11 +670,11 @@
       renderCursorPosition(x, y, false);
 
       // Dynamically varied step delay: non-constant rhythm throughout
-      const velocityMod = Math.max(0.24, (v * (1 + Math.sin(t * Math.PI * speedSineFreq) * speedSineAmp)));
+      const velocityMod = Math.max(0.3, (v * (1 + Math.sin(t * Math.PI * speedSineFreq) * speedSineAmp)));
       const baseStepDelay = baseDuration / steps;
-      const dynamicStepDelay = (baseStepDelay / velocityMod) * randf(0.85, 1.2);
+      const dynamicStepDelay = (baseStepDelay / velocityMod) * randf(0.9, 1.15);
 
-      await sleep(Math.max(3, Math.round(dynamicStepDelay)), signal);
+      await sleep(Math.max(2, Math.round(dynamicStepDelay)), signal);
     }
 
     _cursorX = toX;
@@ -766,16 +776,16 @@
     }
 
     const dist = Math.hypot(toX - fromX, toY - fromY);
-    const maxSteps = cMult > 2.0 ? 38 : (cMult > 1.3 ? 55 : 80);
-    const steps = Math.max(12, Math.min(maxSteps, Math.floor(dist / (3.4 * Math.sqrt(cMult)))));
-    const cpX = (fromX + toX) / 2 + randf(-dist * 0.12, dist * 0.12);
-    const cpY = (fromY + toY) / 2 + randf(-dist * 0.12, dist * 0.12);
+    const maxSteps = cMult > 2.0 ? 18 : (cMult > 1.3 ? 26 : 40);
+    const steps = Math.max(6, Math.min(maxSteps, Math.floor(dist / (4.5 * Math.sqrt(cMult)))));
+    const cpX = (fromX + toX) / 2 + randf(-dist * 0.08, dist * 0.08);
+    const cpY = (fromY + toY) / 2 + randf(-dist * 0.08, dist * 0.08);
 
-    // Deliberate human drag duration scaled by cursorSpeed
+    // Deliberate human drag duration scaled by cursorSpeed (Fast-Forward Optimized)
     const rawDragDuration = opts.fast
-      ? rand(260, 480)
-      : Math.round(420 + Math.pow(dist, 0.54) * randf(11, 20) + rand(90, 220));
-    const dragDuration = Math.max(70, Math.round(rawDragDuration / cMult));
+      ? rand(90, 180)
+      : Math.round(160 + Math.pow(dist, 0.45) * randf(5, 9) + rand(30, 80));
+    const dragDuration = Math.max(30, Math.round(rawDragDuration / cMult));
 
     for (let s = 1; s <= steps; s++) {
       if (signal?.aborted) {
@@ -789,8 +799,8 @@
       const t = s / steps;
       // Smooth human ease-in-out with deceleration near alignment point
       const tEased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX + randf(-0.6, 0.6);
-      const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY + randf(-0.6, 0.6);
+      const x = (1 - tEased) * (1 - tEased) * fromX + 2 * (1 - tEased) * tEased * cpX + tEased * tEased * toX;
+      const y = (1 - tEased) * (1 - tEased) * fromY + 2 * (1 - tEased) * tEased * cpY + tEased * tEased * toY;
 
       dispatchPointer('pointermove', x, y, { buttons: 1, dragging: true, pressure: 0.5 });
       dispatchMouse('mousemove', x, y, { buttons: 1, dragging: true });
@@ -800,9 +810,9 @@
       updateDragHalo(x, y, true);
 
       // Non-constant variable drag step delay
-      const v = Math.max(0.3, Math.sin(t * Math.PI) * (1 + Math.sin(t * Math.PI * 3) * 0.22));
-      const stepDelay = (dragDuration / steps) * (1 / v) * randf(0.85, 1.2);
-      await sleep(Math.max(3, Math.round(stepDelay)), signal);
+      const v = Math.max(0.35, Math.sin(t * Math.PI) * (1 + Math.sin(t * Math.PI * 3) * 0.22));
+      const stepDelay = (dragDuration / steps) * (1 / v) * randf(0.85, 1.15);
+      await sleep(Math.max(2, Math.round(stepDelay)), signal);
     }
 
     if (signal?.aborted) {
@@ -871,26 +881,15 @@
     const opMult = getOpMult();
     let rawMs;
     switch (type) {
-      case 'micro': rawMs = rand(90, 240); break;
-      case 'short': rawMs = rand(300, 800); break;
-      case 'medium': rawMs = rand(800, 1800); break;
-      case 'long': rawMs = rand(1800, 4200); break;
-      case 'idle': rawMs = rand(4000, 8500); break;
-      default: rawMs = rand(250, 700);
+      case 'micro': rawMs = rand(15, 35); break;
+      case 'short': rawMs = rand(40, 90); break;
+      case 'medium': rawMs = rand(90, 180); break;
+      case 'long': rawMs = rand(180, 360); break;
+      case 'idle': rawMs = rand(300, 600); break;
+      default: rawMs = rand(30, 80);
     }
-    const ms = Math.max(30, Math.round(rawMs / opMult));
-
-    if ((type === 'long' || type === 'idle') && opMult < 1.8) {
-      const cycles = rand(2, 3);
-      const ws = getWorkspaceRect();
-      for (let i = 0; i < cycles && !signal.aborted; i++) {
-        const pt = randomPointIn(ws, 40);
-        await moveCursorTo(pt.x, pt.y, signal, { fast: false });
-        await sleep(Math.max(25, Math.round(rand(ms / cycles * 0.4, ms / cycles * 0.9))), signal);
-      }
-    } else {
-      await sleep(ms, signal);
-    }
+    const ms = Math.max(10, Math.round(rawMs / opMult));
+    await sleep(ms, signal);
   }
 
   // ─── Specialized Human Design Operations ─────────────────────────────────────
@@ -901,6 +900,7 @@
    */
   async function actionChangeColor(signal) {
     const ws = getWorkspaceRect();
+    const opMult = getOpMult();
 
     // Step A: Select an element on the canvas first
     const pt = randomPointIn(ws, 50);
@@ -919,15 +919,21 @@
       '[aria-label*="Fill" i]',
       '[class*="palette"]',
       '[class*="swatch"]',
+      'input[type="color"]',
     ]);
 
     let swatchX, swatchY;
     if (colorBtn) {
+      if (colorBtn.tagName === 'INPUT' && colorBtn.type === 'color') {
+        const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4'];
+        colorBtn.value = pick(colors);
+        colorBtn.dispatchEvent(new Event('input', { bubbles: true }));
+        colorBtn.dispatchEvent(new Event('change', { bubbles: true }));
+      }
       const c = center(colorBtn);
       swatchX = c.x;
       swatchY = c.y;
     } else {
-      // Realistic UI coordinates: top toolbar or right inspector panel
       if (Math.random() < 0.5) {
         swatchX = randf(180, 360);
         swatchY = randf(52, 78);
@@ -940,7 +946,7 @@
     // Click color swatch (showing ripple halo)
     await clickAt(swatchX, swatchY, signal, { haloVariant: 'amber' });
     if (signal.aborted) return;
-    await thinkingPause(signal, 'short');
+    await thinkingPause(signal, 'micro');
 
     // Step C: Move across color palette swatches like human deciding
     const paletteBaseX = swatchX + randf(-60, 60);
@@ -948,30 +954,21 @@
 
     // Hover over 1-2 swatches
     await moveCursorTo(paletteBaseX + randf(-30, 30), paletteBaseY + randf(-20, 20), signal);
-    await sleep(rand(180, 420), signal);
+    await sleep(Math.max(20, Math.round(rand(40, 90) / opMult)), signal);
 
     // Pick new color swatch with visible click
     await clickAt(paletteBaseX + randf(-40, 40), paletteBaseY + randf(-30, 30), signal, { haloVariant: 'purple' });
     if (signal.aborted) return;
 
-    // 35% chance to tweak hue or opacity slider slightly
-    if (Math.random() < 0.35) {
-      await sleep(rand(150, 300), signal);
-      const sliderX = paletteBaseX + randf(-40, 40);
-      const sliderY = paletteBaseY + 50;
-      await dragFrom(sliderX, sliderY, sliderX + randf(-25, 25), sliderY, signal, { fast: true });
-    }
-
-    // Step D: Dismiss palette (click canvas or press Escape)
-    await sleep(rand(200, 500), signal);
+    // Dismiss palette (click canvas or press Escape)
+    await sleep(Math.max(20, Math.round(rand(40, 100) / opMult)), signal);
     if (Math.random() < 0.6) {
       await clickAt(randf(ws.left + 40, ws.right - 40), randf(ws.top + 40, ws.bottom - 40), signal);
     } else {
       await pressShortcut('Escape', {}, signal);
     }
 
-    // Thinking pause: designer admiring the updated color composition
-    await thinkingPause(signal, 'medium');
+    await thinkingPause(signal, 'micro');
     designState.totalActions++;
   }
 
@@ -982,6 +979,7 @@
    */
   async function actionEditText(signal) {
     const ws = getWorkspaceRect();
+    const opMult = getOpMult();
     const pt = randomPointIn(ws, 70);
 
     // Double click to enter text edit mode (shows double halo)
@@ -992,7 +990,7 @@
     // 40% chance to select all old text
     if (Math.random() < 0.4) {
       await pressShortcut('a', { ctrlKey: true }, signal);
-      await sleep(rand(120, 300), signal);
+      await sleep(Math.max(20, Math.round(rand(40, 90) / opMult)), signal);
     }
 
     // Rich catalog of realistic human graphic design texts
@@ -1020,58 +1018,20 @@
     const copyCat = pick(['headline', 'quote', 'cta', 'subheading']);
     const sample = await getCreativeCopy(copyCat, designTexts);
     if (signal.aborted) return;
-    const charsToType = rand(Math.min(5, sample.length), sample.length);
 
-    // Realistic variable typing cadence: alternate fast burst words and deliberate words
-    let inFastBurst = Math.random() < 0.4;
-    for (let i = 0; i < charsToType && !signal.aborted; i++) {
-      await waitIfPaused(signal);
-      if (signal.aborted) break;
-
-      const char = sample[i];
-      if (char === ' ') {
-        inFastBurst = Math.random() < 0.45;
-      }
-
-      // 15% chance of making a 1-character typo, noticing, and correcting!
-      if (Math.random() < 0.15 && i > 1) {
-        const typoChar = String.fromCharCode(char.charCodeAt(0) + rand(-1, 1));
-        dispatchKeyboard('keydown', typoChar);
-        await sleep(rand(35, 75), signal);
-        dispatchKeyboard('keyup', typoChar);
-
-        // Human hesitation upon noticing the typo
-        await sleep(rand(200, 420), signal);
-
-        // Hit backspace to delete the mistaken character
-        dispatchKeyboard('keydown', 'Backspace', { code: 'Backspace' });
-        await sleep(rand(35, 75), signal);
-        dispatchKeyboard('keyup', 'Backspace', { code: 'Backspace' });
-        await sleep(rand(120, 240), signal);
-      }
-
-      // Type correct character with varied velocity
-      const keyPressDuration = inFastBurst ? rand(25, 60) : rand(55, 110);
-      dispatchKeyboard('keydown', char);
-      await sleep(keyPressDuration, signal);
-      dispatchKeyboard('keyup', char);
-
-      // Variable inter-keystroke intervals (fast burst words type quickly; others vary)
-      let pauseMs = inFastBurst ? rand(25, 65) : rand(65, 160);
-      if (char === ' ') pauseMs += rand(80, 220);
-      if (char === ',' || char === '.') pauseMs += rand(200, 450);
-      await sleep(pauseMs, signal);
-    }
+    // Fast-forward text insertion using DOM execCommand & InputEvents
+    await typeDesignText(sample, signal);
+    if (signal.aborted) return;
 
     // 35% chance to toggle Bold (Ctrl+B) or Italic (Ctrl+I)
     if (Math.random() < 0.35 && !signal.aborted) {
-      await sleep(rand(150, 350), signal);
+      await sleep(Math.max(20, Math.round(rand(40, 90) / opMult)), signal);
       const styleKey = Math.random() < 0.7 ? 'b' : 'i';
       await pressShortcut(styleKey, { ctrlKey: true }, signal);
     }
 
     // Exit text editing mode
-    await sleep(rand(200, 500), signal);
+    await sleep(Math.max(25, Math.round(rand(50, 110) / opMult)), signal);
     if (Math.random() < 0.5) {
       await pressShortcut('Escape', {}, signal);
     } else {
@@ -1079,7 +1039,7 @@
       await clickAt(randf(ws.left + 20, ws.right - 20), randf(ws.top + 20, ws.bottom - 20), signal);
     }
 
-    await thinkingPause(signal, 'short');
+    await thinkingPause(signal, 'micro');
     designState.totalActions++;
   }
 
@@ -1089,6 +1049,7 @@
    */
   async function actionChangeBackground(signal) {
     const ws = getWorkspaceRect();
+    const opMult = getOpMult();
 
     // Step A: Click outer canvas margin to select background layer
     const marginX = Math.random() < 0.5 ? ws.left + randf(10, 30) : ws.right - randf(10, 30);
@@ -1110,7 +1071,6 @@
       const c = center(bgControl);
       await clickAt(c.x, c.y, signal, { haloVariant: 'purple' });
     } else {
-      // Realistic background tab location on left sidebar or top property strip
       if (Math.random() < 0.6) {
         await clickAt(randf(18, 50), randf(240, 380), signal, { haloVariant: 'purple' });
       } else {
@@ -1118,7 +1078,7 @@
       }
     }
 
-    await thinkingPause(signal, 'short');
+    await thinkingPause(signal, 'micro');
 
     // Step C: Click a background preset/gradient swatch in sidebar/popover
     const swatchX = randf(90, 220);
@@ -1126,11 +1086,27 @@
     await clickAt(swatchX, swatchY, signal, { haloVariant: 'blue' });
     if (signal.aborted) return;
 
-    // Step D: Return to canvas center and observe background contrast
-    await sleep(rand(300, 700), signal);
+    // Step D: Render canvas background gradient if real canvas is present
+    drawOnCanvasIfPresent((ctx, rect, sx, sy) => {
+      const grad = ctx.createLinearGradient(0, 0, rect.width * sx, rect.height * sy);
+      const bgThemes = [
+        ['#090d16', '#111827', '#030712'],
+        ['#0f172a', '#1e293b', '#020617'],
+        ['#18181b', '#27272a', '#09090b'],
+        ['#0d1117', '#161b22', '#010409']
+      ];
+      const theme = pick(bgThemes);
+      grad.addColorStop(0, theme[0]);
+      grad.addColorStop(0.5, theme[1]);
+      grad.addColorStop(1, theme[2]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, rect.width * sx, rect.height * sy);
+    });
+
+    await sleep(Math.max(30, Math.round(rand(60, 150) / opMult)), signal);
     await clickAt(ws.left + ws.width / 2 + randf(-50, 50), ws.top + ws.height / 2 + randf(-50, 50), signal);
 
-    await thinkingPause(signal, 'medium');
+    await thinkingPause(signal, 'micro');
     designState.totalActions++;
   }
 
@@ -1221,6 +1197,7 @@
    */
   async function actionUndoRedoExploration(signal) {
     const ws = getWorkspaceRect();
+    const opMult = getOpMult();
     const from = randomPointIn(ws, 60);
     const to = {
       x: from.x + randf(-90, 90),
@@ -1231,18 +1208,18 @@
     await dragFrom(from.x, from.y, to.x, to.y, signal);
     if (signal.aborted) return;
 
-    // Contemplative thinking pause: evaluating whether this change looks good
-    await thinkingPause(signal, 'medium');
+    // Fast evaluating pause
+    await thinkingPause(signal, 'short');
     if (signal.aborted) return;
 
     // Dislike change -> hit Ctrl+Z to undo
     await pressShortcut('z', { ctrlKey: true }, signal);
-    await thinkingPause(signal, 'short');
+    await thinkingPause(signal, 'micro');
 
     // 40% chance to hit Ctrl+Shift+Z (redo) or try another nudge
     if (Math.random() < 0.4) {
       await pressShortcut('z', { ctrlKey: true, shiftKey: true }, signal);
-      await sleep(rand(300, 600), signal);
+      await sleep(Math.max(25, Math.round(rand(40, 100) / opMult)), signal);
     }
 
     designState.totalActions++;
@@ -1254,32 +1231,33 @@
    */
   async function actionZoomAndInspect(signal) {
     const ws = getWorkspaceRect();
+    const opMult = getOpMult();
 
     // Zoom in with Ctrl++
     await pressShortcut('=', { ctrlKey: true }, signal);
-    await sleep(rand(200, 400), signal);
+    await sleep(Math.max(20, Math.round(rand(40, 80) / opMult)), signal);
 
-    // Slowly inspect 2-3 visual details
-    const points = rand(2, 3);
+    // Inspect 2 visual details
+    const points = rand(1, 2);
     for (let i = 0; i < points && !signal.aborted; i++) {
       const pt = randomPointIn(ws, 40);
       await moveCursorTo(pt.x, pt.y, signal, { fast: false });
-      await sleep(rand(350, 700), signal);
+      await sleep(Math.max(25, Math.round(rand(40, 90) / opMult)), signal);
     }
 
     // Pan with Spacebar + drag
     const panFrom = randomPointIn(ws, 60);
     const panTo = { x: panFrom.x + randf(-120, 120), y: panFrom.y + randf(-80, 80) };
     dispatchKeyboard('keydown', ' ', { code: 'Space' });
-    await sleep(60, signal);
-    await dragFrom(panFrom.x, panFrom.y, panTo.x, panTo.y, signal, { fast: false });
+    await sleep(Math.max(10, Math.round(20 / opMult)), signal);
+    await dragFrom(panFrom.x, panFrom.y, panTo.x, panTo.y, signal, { fast: true });
     dispatchKeyboard('keyup', ' ', { code: 'Space' });
 
     // Reset zoom with Ctrl+0
-    await sleep(rand(300, 600), signal);
+    await sleep(Math.max(25, Math.round(rand(40, 90) / opMult)), signal);
     await pressShortcut('0', { ctrlKey: true }, signal);
 
-    await thinkingPause(signal, 'short');
+    await thinkingPause(signal, 'micro');
     designState.totalActions++;
   }
 
@@ -1474,39 +1452,70 @@
   }
 
   /**
-   * Helper: Type text into current focused element with variable human velocity
+   * Universal Character & Text Insertion Engine for Web Editors
+   * Inserts text into focused elements, contenteditable areas, canvas inputs, or dispatches inputs
+   */
+  async function typeDesignCharacter(char, signal) {
+    if (signal?.aborted) return;
+    const el = document.activeElement || document.body;
+
+    // 1. Dispatch keyboard events
+    dispatchKeyboard('keydown', char);
+    dispatchKeyboard('keypress', char);
+
+    // 2. Real character insertion into DOM fields
+    let inserted = false;
+    try {
+      if (document.queryCommandSupported?.('insertText') || el.isContentEditable || el.closest?.('[contenteditable="true"]')) {
+        inserted = document.execCommand('insertText', false, char);
+      }
+    } catch (_) { }
+
+    if (!inserted && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+      try {
+        const start = el.selectionStart ?? el.value.length;
+        const end = el.selectionEnd ?? el.value.length;
+        const prevVal = el.value || '';
+        const newVal = prevVal.substring(0, start) + char + prevVal.substring(end);
+
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+          || Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+        if (setter) {
+          setter.call(el, newVal);
+        } else {
+          el.value = newVal;
+        }
+        el.selectionStart = el.selectionEnd = start + char.length;
+        el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: false, data: char, inputType: 'insertText' }));
+      } catch (_) { }
+    }
+
+    // 3. Dispatch input & keyup
+    try {
+      el.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, data: char, inputType: 'insertText' }));
+    } catch (_) { }
+    dispatchKeyboard('keyup', char);
+
+    if (_nativeOsAvailable) {
+      sendNativeCmd({ cmd: 'typeString', text: char, delay: 0 });
+    }
+  }
+
+  /**
+   * Helper: Type text into current focused element with variable human velocity (Fast-Forward Optimized)
    */
   async function typeDesignText(text, signal) {
-    let inFastBurst = Math.random() < 0.45;
+    const opMult = getOpMult();
     for (let i = 0; i < text.length && !signal.aborted; i++) {
       await waitIfPaused(signal);
       if (signal.aborted) break;
 
       const char = text[i];
-      if (char === ' ') inFastBurst = Math.random() < 0.5;
+      await typeDesignCharacter(char, signal);
 
-      // Occasional human typo & quick backspace fix
-      if (Math.random() < 0.12 && i > 1) {
-        const typoChar = String.fromCharCode(char.charCodeAt(0) + rand(-1, 1));
-        dispatchKeyboard('keydown', typoChar);
-        await sleep(rand(30, 60), signal);
-        dispatchKeyboard('keyup', typoChar);
-        await sleep(rand(180, 320), signal);
-        dispatchKeyboard('keydown', 'Backspace', { code: 'Backspace' });
-        await sleep(rand(30, 60), signal);
-        dispatchKeyboard('keyup', 'Backspace', { code: 'Backspace' });
-        await sleep(rand(100, 200), signal);
-      }
-
-      const keyDur = inFastBurst ? rand(20, 50) : rand(50, 95);
-      dispatchKeyboard('keydown', char);
-      await sleep(keyDur, signal);
-      dispatchKeyboard('keyup', char);
-
-      let pauseMs = inFastBurst ? rand(25, 60) : rand(60, 140);
-      if (char === ' ') pauseMs += rand(70, 180);
-      if (char === '→' || char === '—') pauseMs += rand(150, 300);
-      await sleep(pauseMs, signal);
+      // Fast-forward delay: 12–35ms scaled by opMult
+      const charDelay = Math.max(6, Math.round(rand(14, 38) / opMult));
+      await sleep(charDelay, signal);
     }
   }
 
@@ -1517,6 +1526,7 @@
    */
   async function actionCreateHeroBanner(signal) {
     const ws = getWorkspaceRect();
+    const opMult = getOpMult();
     const bannerW = Math.round(ws.width * randf(0.72, 0.82));
     const bannerH = Math.round(ws.height * randf(0.32, 0.40));
     const bannerX = Math.round(ws.left + (ws.width - bannerW) / 2);
@@ -1524,7 +1534,7 @@
 
     // Step A: Activate Rectangle / Frame tool via universal shortcut 'r'
     await pressShortcut('r', {}, signal);
-    await sleep(rand(150, 320), signal);
+    await sleep(Math.max(20, Math.round(rand(40, 90) / opMult)), signal);
 
     // Step B: Drag across workspace creating the hero container frame
     await dragFrom(bannerX, bannerY, bannerX + bannerW, bannerY + bannerH, signal, { fast: false });
@@ -1536,13 +1546,13 @@
     if (colorBtn) {
       const c = center(colorBtn);
       await clickAt(c.x, c.y, signal, { haloVariant: 'amber' });
-      await sleep(rand(200, 400), signal);
+      await sleep(Math.max(20, Math.round(rand(50, 110) / opMult)), signal);
       await clickAt(c.x + randf(-30, 50), c.y + randf(60, 120), signal, { haloVariant: 'purple' });
     }
 
     // Step D: Activate Text tool ('t') to place impactful hero typography
     await pressShortcut('t', {}, signal);
-    await sleep(rand(150, 300), signal);
+    await sleep(Math.max(20, Math.round(rand(40, 80) / opMult)), signal);
 
     const titleX = Math.round(bannerX + bannerW * 0.5);
     const titleY = Math.round(bannerY + bannerH * 0.36);
@@ -1563,13 +1573,13 @@
 
     // Bold formatting (Ctrl+A, Ctrl+B)
     await pressShortcut('a', { ctrlKey: true }, signal);
-    await sleep(rand(100, 200), signal);
+    await sleep(Math.max(15, Math.round(rand(30, 60) / opMult)), signal);
     await pressShortcut('b', { ctrlKey: true }, signal);
-    await sleep(rand(150, 300), signal);
+    await sleep(Math.max(20, Math.round(rand(40, 80) / opMult)), signal);
 
     // Step E: Create CTA pill button inside hero banner
     await pressShortcut('r', {}, signal);
-    await sleep(rand(120, 250), signal);
+    await sleep(Math.max(20, Math.round(rand(30, 70) / opMult)), signal);
 
     const btnW = 160;
     const btnH = 42;
@@ -1581,7 +1591,7 @@
 
     // Type CTA copy inside button
     await pressShortcut('t', {}, signal);
-    await sleep(rand(100, 200), signal);
+    await sleep(Math.max(20, Math.round(rand(30, 60) / opMult)), signal);
     await clickAt(btnX + btnW / 2, btnY + btnH / 2, signal, { focus: true });
     const heroCta = await getCreativeCopy('cta', ['Explore Now →', 'Get Started →', 'Discover More →']);
     await typeDesignText(heroCta, signal);
@@ -1908,56 +1918,123 @@
    * Specifically triggers real element creation buttons (Add a heading, Elements, etc.)
    */
   async function actionPlatformSmartDesign(signal) {
-    // 1. Check if Canva "Text" tab exists
-    const textTab = findVisible([
-      'button[aria-label*="Text" i]',
-      '[data-testid*="text-button"]',
-      '[data-testid="side-panel-button-text"]',
-    ]);
+    const plat = (designState.platform || '').toLowerCase();
 
-    if (textTab) {
-      const tc = center(textTab);
-      await clickAt(tc.x, tc.y, signal, { haloVariant: 'purple' });
-      await sleep(rand(350, 700), signal);
+    // ── 1. CANVA SMART DESIGN ──
+    if (plat.includes('canva') || location.hostname.includes('canva.com')) {
+      const textTab = findVisible([
+        'button[aria-label*="Text" i]',
+        '[data-testid*="text-button"]',
+        '[data-testid="side-panel-button-text"]',
+      ]);
+      if (textTab) {
+        const tc = center(textTab);
+        await clickAt(tc.x, tc.y, signal, { haloVariant: 'purple' });
+        await sleep(rand(80, 160), signal);
 
-      // In Canva, find "Add a heading" button
-      const headingBtn = Array.from(document.querySelectorAll('button, div[role="button"]')).find(el => {
-        const t = (el.textContent || '').toLowerCase();
-        return t.includes('add a heading') || t.includes('heading') || t.includes('add a text box');
-      });
+        const headingBtn = Array.from(document.querySelectorAll('button, div[role="button"]')).find(el => {
+          const t = (el.textContent || '').toLowerCase();
+          return t.includes('add a heading') || t.includes('heading') || t.includes('add a text box');
+        });
+        if (headingBtn) {
+          const hc = center(headingBtn);
+          await clickAt(hc.x, hc.y, signal, { haloVariant: 'blue' });
+          await sleep(rand(80, 160), signal);
+          const headingText = await getCreativeCopy('headline', [
+            'SUMMER EDITORIAL 2026',
+            'DESIGN BEYOND BOUNDARIES',
+            'PREMIUM CRAFTSMANSHIP',
+            'INNOVATION IN EVERY PIXEL',
+          ]);
+          await typeDesignText(headingText, signal);
+          designState.totalActions += 2;
+          return;
+        }
+      }
 
-      if (headingBtn) {
-        const hc = center(headingBtn);
-        await clickAt(hc.x, hc.y, signal, { haloVariant: 'blue' });
-        await sleep(rand(400, 800), signal);
-        const headingText = await getCreativeCopy('headline', [
-          'SUMMER EDITORIAL 2026',
-          'DESIGN BEYOND BOUNDARIES',
-          'PREMIUM CRAFTSMANSHIP',
-          'INNOVATION IN EVERY PIXEL',
-        ]);
-        await typeDesignText(headingText, signal);
-        designState.totalActions += 2;
+      const elementsTab = findVisible([
+        'button[aria-label*="Elements" i]',
+        '[data-testid*="elements-button"]',
+      ]);
+      if (elementsTab) {
+        const ec = center(elementsTab);
+        await clickAt(ec.x, ec.y, signal, { haloVariant: 'purple' });
+        await sleep(rand(80, 160), signal);
+        await clickAt(randf(100, 220), randf(160, 280), signal, { haloVariant: 'amber' });
+        designState.totalActions++;
         return;
       }
     }
 
-    // 2. Check if Canva "Elements" tab exists
-    const elementsTab = findVisible([
-      'button[aria-label*="Elements" i]',
-      '[data-testid*="elements-button"]',
-    ]);
-    if (elementsTab) {
-      const ec = center(elementsTab);
-      await clickAt(ec.x, ec.y, signal, { haloVariant: 'purple' });
-      await sleep(rand(350, 650), signal);
-      await clickAt(randf(100, 220), randf(160, 280), signal, { haloVariant: 'amber' });
-      designState.totalActions++;
+    // ── 2. FIGMA SMART DESIGN ──
+    if (plat.includes('figma') || location.hostname.includes('figma.com')) {
+      const toolKeys = ['r', 't', 'o', 'f'];
+      const toolKey = pick(toolKeys);
+      await pressShortcut(toolKey, {}, signal);
+      await sleep(rand(40, 90), signal);
+      const ws = getWorkspaceRect();
+      const x1 = randf(ws.left + 50, ws.right - 150);
+      const y1 = randf(ws.top + 50, ws.bottom - 150);
+      await dragFrom(x1, y1, x1 + randf(100, 220), y1 + randf(60, 140), signal);
+      if (toolKey === 't') {
+        const text = await getCreativeCopy('headline', ['UI/UX COMPONENT', 'DESIGN SYSTEM 2026', 'HERO SECTION']);
+        await typeDesignText(text, signal);
+      }
+      designState.totalActions += 2;
       return;
     }
 
-    // Fallback: Default to Hero Banner construction
-    await actionCreateHeroBanner(signal);
+    // ── 3. PHOTOPEA / PIXLR / PICSART SMART DESIGN ──
+    if (plat.includes('photopea') || plat.includes('pixlr') || plat.includes('picsart')) {
+      const tool = findVisible([
+        '#tool_type', '#tool_rect', '#tool_brush',
+        '#tool-text', '#tool-draw', '#tool-shape',
+        '[data-testid*="text"]', '[data-testid*="shapes"]'
+      ]);
+      if (tool) {
+        const tc = center(tool);
+        await clickAt(tc.x, tc.y, signal, { haloVariant: 'purple' });
+        await sleep(rand(60, 120), signal);
+      } else {
+        await pressShortcut(pick(['t', 'u', 'b']), {}, signal);
+      }
+      const ws = getWorkspaceRect();
+      const pt = randomPointIn(ws, 60);
+      await clickAt(pt.x, pt.y, signal, { focus: true });
+      const copy = await getCreativeCopy('headline', ['CREATIVE VISION', 'DIGITAL EDITORIAL', 'MODERN ARTWORK']);
+      await typeDesignText(copy, signal);
+      designState.totalActions += 2;
+      return;
+    }
+
+    // ── 4. EXCALIDRAW / MIRO / PENPOT SMART DESIGN ──
+    if (plat.includes('excalidraw') || plat.includes('miro') || plat.includes('penpot') || plat.includes('tldraw')) {
+      const exTool = findVisible([
+        'button[data-testid="rectangle"]', 'button[data-testid="text"]', 'button[data-testid="ellipse"]',
+        'button[data-testid="text-tool"]', 'button[data-testid="shape-tool"]',
+        '[data-handler="text"]', '[data-handler="rect"]'
+      ]);
+      if (exTool) {
+        const c = center(exTool);
+        await clickAt(c.x, c.y, signal, { haloVariant: 'purple' });
+      } else {
+        await pressShortcut(pick(['r', 't', 'e', 'o']), {}, signal);
+      }
+      await sleep(rand(40, 90), signal);
+      const ws = getWorkspaceRect();
+      const x1 = randf(ws.left + 60, ws.right - 180);
+      const y1 = randf(ws.top + 60, ws.bottom - 140);
+      await dragFrom(x1, y1, x1 + randf(120, 240), y1 + randf(80, 160), signal);
+      designState.totalActions += 2;
+      return;
+    }
+
+    // Fallback: Default to Hero Banner or CTA
+    if (Math.random() < 0.5) {
+      await actionCreateHeroBanner(signal);
+    } else {
+      await actionCreateCTAButton(signal);
+    }
   }
 
   // ─── Action Pool ────────────────────────────────────────────────────────────
@@ -2001,11 +2078,9 @@
   // ─── Thinking Pause Scheduler ────────────────────────────────────────────────
 
   const PAUSE_WEIGHTS = [
-    { type: 'micro', weight: 38 },
-    { type: 'short', weight: 36 },
-    { type: 'medium', weight: 16 },
-    { type: 'long', weight: 8 },
-    { type: 'idle', weight: 2 },
+    { type: 'micro', weight: 65 },
+    { type: 'short', weight: 28 },
+    { type: 'medium', weight: 7 },
   ];
   const PAUSE_TOTAL = PAUSE_WEIGHTS.reduce((s, p) => s + p.weight, 0);
 
@@ -2015,7 +2090,7 @@
       rng -= p.weight;
       if (rng <= 0) return p.type;
     }
-    return 'short';
+    return 'micro';
   }
 
   // ─── Main Design Loop ────────────────────────────────────────────────────────
@@ -2261,5 +2336,16 @@
       chrome.runtime.sendMessage({ action: 'designStatus', detail: e.detail });
     } catch (_) { }
   });
+
+  // ─── Export Programmatic Control API ─────────────────────────────────────────
+  window.__tbaDesignEngine = {
+    start: (opts = {}) => handleDesignCommand('start', opts.duration, opts.cursorSpeed, opts.operationSpeed),
+    pause: () => handleDesignCommand('pause'),
+    resume: () => handleDesignCommand('resume'),
+    stop: () => handleDesignCommand('stop'),
+    detectPlatform,
+    getStatus: () => ({ ...designState }),
+    state: designState,
+  };
 
 })();
